@@ -20,3 +20,22 @@ class User(mongoengine.Document):
     def save(self, *args, **kw):
         self.slug = slugify.slugify(self.name)
         super(User, self).save(*args, **kw)
+
+
+class OtherUser(mongoengine.Document):
+    name = mongoengine.StringField(required=True)
+    email = mongoengine.StringField(required=True)
+    slug = mongoengine.StringField(required=False)
+
+    def to_dict(self):
+        return {
+            "user": "%s <%s>" % (self.name, self.email)
+        }
+
+    def save(self, *args, **kw):
+        self.slug = slugify.slugify(self.name)
+        super(OtherUser, self).save(*args, **kw)
+
+    @classmethod
+    def get_id_field_name(cls):
+        return OtherUser.slug

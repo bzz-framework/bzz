@@ -31,7 +31,11 @@ class ModelRestHandler(tornado.web.RequestHandler):
     def get(self, pk=None):
         instance = yield self.get_instance(pk)
 
-        if instance:
+        if pk is not None:
+            if instance is None:
+                self.send_error(status_code=404)
+                return
+
             self.write_json(self.dump_object(instance))
             self.finish()
         else:
@@ -75,12 +79,9 @@ class ModelRestHandler(tornado.web.RequestHandler):
         data = {}
         for arg in list(self.request.arguments.keys()):
             data[arg] = self.get_argument(arg)
-            if data[arg] == '':  # Tornado 3.0+ compatibility
+            if data[arg] == '':  # Tornado 3.0+ compatibility... Hard to test...
                 data[arg] = None
         return data
 
     def dump_object(self, instance):
         return json.dumps(instance)
-
-    def collect_arguments(self):
-        return self.request.arguments

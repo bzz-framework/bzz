@@ -19,3 +19,12 @@ class UserFactory(mongofactory.MongoEngineFactory):
 
     class Meta:
         model = models.User
+
+
+class OtherUserFactory(mongofactory.MongoEngineFactory):
+    name = factory.Sequence(lambda i: u'other-user %d' % i)
+    slug = factory.LazyAttribute(lambda user: slugify.slugify(user.name))
+    email = factory.Sequence(lambda i: u'other-user-%d@whatever.foo' % i)
+
+    class Meta:
+        model = models.OtherUser

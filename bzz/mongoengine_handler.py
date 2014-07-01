@@ -9,10 +9,18 @@
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
 import math
+import re
 
 import tornado.gen as gen
 
 import bzz.rest as bzz
+
+
+first_cap_re = re.compile('(.)([A-Z][a-z]+)')
+all_cap_re = re.compile('([a-z0-9])([A-Z])')
+def convert(name):
+    s1 = first_cap_re.sub(r'\1_\2', name)
+    return all_cap_re.sub(r'\1_\2', s1).lower()
 
 
 class MongoEngineRestHandler(bzz.ModelRestHandler):
@@ -23,7 +31,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
         name = resource_name
         if name is None:
-            name = document_type.__name__.lower()
+            name = convert(document_type.__name__)
 
         details_url = r'/%s%s(?:/(?P<pk>[^/]+)?)/?' % (prefix, name)
 
@@ -31,16 +39,9 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             (details_url, cls, dict(model=document_type, name=name, prefix=prefix))
         ]
 
-    def get_model_id(self, instance):
-        return getattr(instance, 'get_id', lambda: str(instance.id))()
-
     @gen.coroutine
     def save_new_instance(self, data):
-        values = {}
-        for key, value in data.items():
-            values[key] = value[0]
-
-        instance = self.model(**values)
+        instance = self.model(**data)
         instance.save()
 
         raise gen.Return(instance)
@@ -65,7 +66,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         field = self.get_id_field_name()
 
         if instance_id:
-            instance = self.model.objects.get(**{field: instance_id})
+            instance = self.model.objects.filter(**{field: instance_id}).first()
 
         raise gen.Return(instance)
 
@@ -100,9 +101,9 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         return data
 
     def get_instance_id(self, instance):
-        field = getattr(instance, 'get_id_field_name', None)
+        field = getattr(self.model, 'get_id_field_name', None)
         if field:
-            return getattr(instance, field().name)
+            return str(getattr(instance, field().name))
 
         return str(instance.id)
 
@@ -112,4 +113,3 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             return field().name
 
         return 'id'
-

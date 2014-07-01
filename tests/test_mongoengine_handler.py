@@ -8,23 +8,23 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
+try:
+    import ujson as json
+except ImportError:
+    import json
+
 import mongoengine
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
 import tornado.testing as testing
 from preggy import expect
 import derpconf.config as config
+import bson.objectid as oid
 
 import bzz.mongoengine_handler as bzz
 import tests.base as base
 import tests.models.mongoengine_models as models
-
 import tests.fixtures as fix
-
-try:
-    import ujson as json
-except ImportError:
-    import json
 
 
 class TestServer(server.Server):
@@ -34,7 +34,11 @@ class TestServer(server.Server):
         ]
 
     def get_handlers(self):
-        return bzz.MongoEngineRestHandler.routes_for(models.User)
+        routes = [
+            bzz.MongoEngineRestHandler.routes_for(models.User),
+            bzz.MongoEngineRestHandler.routes_for(models.OtherUser)
+        ]
+        return [route for route_list in routes for route in route_list]
 
 
 class MongoEngineRestHandlerTestCase(base.ApiTestCase):
@@ -83,6 +87,41 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(obj['slug']).to_equal(user.slug)
 
     @testing.gen_test
+    def test_getting_invalid_user_fails_with_404(self):
+        objectid = oid.ObjectId()
+        response = self.fetch(
+            '/user/%s' % objectid
+        )
+        expect(response.code).to_equal(404)
+
+    @testing.gen_test
+    def test_can_create_other_user(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/other_user/'),
+            method='POST',
+            body='name=Bernardo%20Heynemann&email=heynemann@gmail.com'
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+        expect(response.headers).to_include('X-Created-Id')
+        expect(response.headers['X-Created-Id']).to_equal('bernardo-heynemann')
+        expect(response.headers).to_include('location')
+
+        expected_url = '/other_user/%s/' % response.headers['X-Created-Id']
+        expect(response.headers['location']).to_equal(expected_url)
+
+    @testing.gen_test
+    def test_can_get_other_user(self):
+        user = fix.OtherUserFactory.create()
+        response = yield self.http_client.fetch(
+            self.get_url('/other_user/%s' % user.slug),
+        )
+        expect(response.code).to_equal(200)
+        obj = json.loads(response.body)
+        expect(obj['user']).to_equal('%s <%s>' % (user.name, user.email))
+
+    @testing.gen_test
     def test_can_get_list(self):
         models.User.objects.delete()
         for i in xrange(30):
@@ -108,6 +147,14 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(response.code).to_equal(200)
         objs = json.loads(response.body)
         expect(len(objs)).to_equal(10)
+
+        response = yield self.http_client.fetch(
+            self.get_url('/user/?page=qwe'),
+        )
+        expect(response.code).to_equal(200)
+        objs = json.loads(response.body)
+        expect(len(objs)).to_equal(20)
+
 
     @testing.gen_test
     def test_can_update(self):
@@ -140,3 +187,12 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
 
         with expect.error_to_happen(mongoengine.errors.DoesNotExist):
             models.User.objects.get(id=user.id)
+
+    @testing.gen_test
+    def test_can_delete_not_found_instance(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/other_user/invalid'),
+            method='DELETE'
+        )
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('FAIL')
