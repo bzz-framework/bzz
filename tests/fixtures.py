@@ -9,7 +9,7 @@ import slugify
 import factory
 import factory.mongoengine as mongofactory
 
-import models.mongoengine_models as models
+import tests.models.mongoengine_models as models
 
 
 class UserFactory(mongofactory.MongoEngineFactory):
