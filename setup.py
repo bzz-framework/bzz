@@ -22,9 +22,10 @@ tests_require = [
     'factory-boy',
     'ipdb',
     'coveralls',
+    'ujson',
     'sphinx',
     'mongoengine',
-    'slugify',
+    'awesome-slugify',
 ]
 
 setup(
