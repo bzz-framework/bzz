@@ -29,17 +29,17 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
     @gen.coroutine
     def get(self, pk=None):
-        instance = yield self.get_instance(pk)
-
-        if pk is not None:
-            if instance is None:
-                self.send_error(status_code=404)
-                return
-
-            self.write_json(self.dump_object(instance))
-            self.finish()
-        else:
+        if pk is None:
             yield self.list()
+            return
+
+        instance = yield self.get_instance(pk)
+        if instance is None:
+            self.send_error(status_code=404)
+            return
+
+        self.write_json(self.dump_object(instance))
+        self.finish()
 
     @gen.coroutine
     def post(self, pk=None):

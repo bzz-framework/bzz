@@ -27,15 +27,12 @@ def convert(name):
 
 class MongoEngineRestHandler(bzz.ModelRestHandler):
     @classmethod
-    def routes_for(cls, document_type, prefix=None, resource_name=None):
-        if prefix is None:
-            prefix = ''
-
+    def routes_for(cls, document_type, prefix='', resource_name=None):
         name = resource_name
         if name is None:
             name = convert(document_type.__name__)
 
-        details_url = r'/%s%s(?:/(?P<pk>[^/]+)?)/?' % (prefix, name)
+        details_url = r'/%s%s(?:/(?P<pk>[^/]+)?)/?' % (prefix.lstrip('/'), name)
 
         return [
             (details_url, cls, dict(model=document_type, name=name, prefix=prefix))
