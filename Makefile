@@ -15,6 +15,8 @@ no_targets__:
 
 # install all dependencies (do not forget to create a virtualenv first)
 setup:
+	# ujson can fail in pypy, we use json if ujson not installed
+	@-pip install -U ujson
 	@pip install -U -e .\[tests\]
 
 # test your application (tests in the tests/ directory)
