@@ -155,7 +155,6 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         objs = json.loads(response.body)
         expect(len(objs)).to_equal(20)
 
-
     @testing.gen_test
     def test_can_update(self):
         user = fix.UserFactory.create()
