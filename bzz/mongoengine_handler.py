@@ -13,7 +13,7 @@ import tornado.gen as gen
 import bzz.rest as bzz
 
 
-class MongoEngineRestHandler(bzz.RestHandler):
+class MongoEngineRestHandler(bzz.ModelRestHandler):
     @classmethod
     def routes_for(cls, document_type, prefix=None, resource_name=None):
         if prefix is None:

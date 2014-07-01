@@ -43,8 +43,9 @@ clear_mongo:
 
 # get a mongodb instance up for your unit tests (localhost:3334)
 mongo_test: kill_mongo_test
-	@rm -rf /tmp/bzz/mongotestdata && mkdir -p /tmp/bzz/mongotestdata
-	@mongod --dbpath /tmp/bzz/mongotestdata --logpath /tmp/bzz/mongotestlog --port 3334 --quiet &
+	@rm -rf /tmp/test-pkg/mongotestdata && mkdir -p /tmp/test-pkg/mongotestdata
+	@mongod --dbpath /tmp/test-pkg/mongotestdata --logpath /tmp/test-pkg/mongotestlog --port 3334 --quiet --fork
+	@until mongo --port 3334 --eval "quit()"; do echo -ne '.\r' ;sleep 0.25; done > /dev/null 2> /dev/null
 
 # kill the test mongodb instance (localhost: 3334)
 kill_mongo_test:

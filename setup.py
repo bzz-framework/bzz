@@ -19,6 +19,7 @@ tests_require = [
     'yanc',
     'preggy',
     'tox',
+    'factory-boy',
     'ipdb',
     'coveralls',
     'sphinx',
