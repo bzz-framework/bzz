@@ -24,7 +24,7 @@ tests_require = [
     'coveralls',
     'sphinx',
     'mongoengine',
-    'slugify',
+    'awesome-slugify',
 ]
 
 setup(

@@ -18,7 +18,7 @@ class User(mongoengine.Document):
     slug = mongoengine.StringField(required=False)
 
     def save(self, *args, **kw):
-        self.slug = slugify.slugify(self.name)
+        self.slug = slugify.slugify(self.name, to_lower=True)
         super(User, self).save(*args, **kw)
 
 
@@ -33,7 +33,7 @@ class OtherUser(mongoengine.Document):
         }
 
     def save(self, *args, **kw):
-        self.slug = slugify.slugify(self.name)
+        self.slug = slugify.slugify(self.name, to_lower=True)
         super(OtherUser, self).save(*args, **kw)
 
     @classmethod

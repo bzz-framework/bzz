@@ -27,6 +27,13 @@ import tests.models.mongoengine_models as models
 import tests.fixtures as fix
 
 
+def load_json(json_string):
+    try:
+        return json.loads(json_string)
+    except ValueError:
+        return json.loads(json_string.decode('utf-8'))
+
+
 class TestServer(server.Server):
     def get_plugins(self):
         return [
@@ -81,7 +88,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
             self.get_url('/user/%s' % user.id),
         )
         expect(response.code).to_equal(200)
-        obj = json.loads(response.body)
+        obj = load_json(response.body)
         expect(obj['email']).to_equal(user.email)
         expect(obj['name']).to_equal(user.name)
         expect(obj['slug']).to_equal(user.slug)
@@ -118,42 +125,42 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
             self.get_url('/other_user/%s' % user.slug),
         )
         expect(response.code).to_equal(200)
-        obj = json.loads(response.body)
+        obj = load_json(response.body)
         expect(obj['user']).to_equal('%s <%s>' % (user.name, user.email))
 
     @testing.gen_test
     def test_can_get_list(self):
         models.User.objects.delete()
-        for i in xrange(30):
+        for i in range(30):
             fix.UserFactory.create()
 
         response = yield self.http_client.fetch(
             self.get_url('/user/'),
         )
         expect(response.code).to_equal(200)
-        objs = json.loads(response.body)
-        expect(len(objs)).to_equal(20)
+        obj = load_json(response.body)
+        expect(obj).to_length(20)
 
         response = yield self.http_client.fetch(
             self.get_url('/user/?page=2'),
         )
         expect(response.code).to_equal(200)
-        objs = json.loads(response.body)
-        expect(len(objs)).to_equal(10)
+        obj = load_json(response.body)
+        expect(obj).to_length(10)
 
         response = yield self.http_client.fetch(
             self.get_url('/user/?page=3'),
         )
         expect(response.code).to_equal(200)
-        objs = json.loads(response.body)
-        expect(len(objs)).to_equal(10)
+        obj = load_json(response.body)
+        expect(obj).to_length(10)
 
         response = yield self.http_client.fetch(
             self.get_url('/user/?page=qwe'),
         )
         expect(response.code).to_equal(200)
-        objs = json.loads(response.body)
-        expect(len(objs)).to_equal(20)
+        obj = load_json(response.body)
+        expect(obj).to_length(20)
 
     @testing.gen_test
     def test_can_update(self):
