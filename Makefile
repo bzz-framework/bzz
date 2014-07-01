@@ -18,11 +18,14 @@ setup:
 	@pip install -U -e .\[tests\]
 
 # test your application (tests in the tests/ directory)
-test: mongo_test unit
+test: mongo_test unit doctest
 
 unit:
 	@coverage run --branch `which nosetests` -vv --with-yanc -s tests/
 	@coverage report -m --fail-under=80
+
+doctest:
+	@cd docs && make doctest
 
 # show coverage in html format
 coverage-html: unit
@@ -55,5 +58,5 @@ kill_mongo_test:
 tox:
 	@tox
 
-#docs:
-	#@cd bzz/docs && make html && open _build/html/index.html
+update-docs:
+	@cd docs && make html && open _build/html/index.html
