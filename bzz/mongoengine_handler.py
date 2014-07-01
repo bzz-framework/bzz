@@ -13,7 +13,7 @@ import re
 
 import tornado.gen as gen
 
-import bzz.rest as bzz
+import bzz.rest_handler as bzz
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
@@ -47,10 +47,16 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
     @gen.coroutine
     def update_instance(self, pk, data):
+        updated_fields = {}
         instance = yield self.get_instance(pk)
         for field, value in self.get_request_data().items():
+            updated_fields[field] = {
+                'from': getattr(instance, field),
+                'to': value
+            }
             setattr(instance, field, value)
         instance.save()
+        raise gen.Return((instance, updated_fields))
 
     @gen.coroutine
     def delete_instance(self, pk):

@@ -71,10 +71,11 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
 
    application = tornado.web.Application(routes)
    io_loop.add_timeout(1, create_user)
-   application.listen(8888)
 
 .. toctree::
    :maxdepth: 2
+
+   signals
 
 Indices and tables
 ==================

@@ -16,6 +16,8 @@ try:
 except ImportError:
     import json
 
+import bzz.signals as signals
+
 
 class ModelRestHandler(tornado.web.RequestHandler):
     def initialize(self, model, name, prefix):
@@ -44,6 +46,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def post(self, pk=None):
         instance = yield self.save_new_instance(self.get_request_data())
+        signals.post_create_instance.send(self, instance=instance)
         pk = self.get_instance_id(instance)
         self.set_header('X-Created-Id', pk)
         self.set_header('location', '/%s%s/%s/' % (
@@ -55,13 +58,15 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
     @gen.coroutine
     def put(self, pk):
-        yield self.update_instance(pk, self.get_request_data())
+        instance, updated = yield self.update_instance(pk, self.get_request_data())
+        signals.post_update_instance.send(self, instance=instance, updated_fields=updated)
         self.write('OK')
 
     @gen.coroutine
     def delete(self, pk):
         instance = yield self.delete_instance(pk)
         if instance:
+            signals.post_delete_instance.send(self, instance=instance)
             self.write('OK')
         else:
             self.write('FAIL')

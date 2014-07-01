@@ -22,6 +22,7 @@ import derpconf.config as config
 import bson.objectid as oid
 
 import bzz.mongoengine_handler as bzz
+import bzz.signals as signals
 import tests.base as base
 import tests.models.mongoengine_models as models
 import tests.fixtures as fix
@@ -202,3 +203,73 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         )
         expect(response.code).to_equal(200)
         expect(response.body).to_equal('FAIL')
+
+    @testing.gen_test
+    def test_can_subscribe_to_create_signal(self):
+        instances = {}
+
+        def handle_post_create(sender, instance):
+            instances[instance.slug] = instance
+
+        signals.post_create_instance.connect(handle_post_create)
+
+        response = yield self.http_client.fetch(
+            self.get_url('/user/'),
+            method='POST',
+            body='name=Bernardo%20Heynemann&email=heynemann@gmail.com'
+        )
+
+        expect(response.code).to_equal(200)
+        expect(instances).to_include('bernardo-heynemann')
+
+    @testing.gen_test
+    def test_can_subscribe_to_update_signal(self):
+        instances = {}
+        updated = {}
+
+        def handle_post_update(sender, instance, updated_fields):
+            instances[instance.slug] = instance
+            updated[instance.slug] = updated_fields
+
+        signals.post_update_instance.connect(handle_post_update)
+
+        user = fix.UserFactory.create()
+        response = yield self.http_client.fetch(
+            self.get_url('/user/%s' % user.id),
+            method='PUT',
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body='name=Rafael%20Floriano&email=rflorianobr@gmail.com'
+        )
+        expect(response.code).to_equal(200)
+ 
+        expect(instances).to_include('rafael-floriano')
+        expect(updated).to_include('rafael-floriano')
+        expect(updated['rafael-floriano']).to_be_like({
+            'name': {
+                'from': user.name,
+                'to': 'Rafael Floriano'
+            },
+            'email': {
+                'from': user.email,
+                'to': 'rflorianobr@gmail.com'
+            }
+        })
+
+    @testing.gen_test
+    def test_can_subscribe_to_delete_signal(self):
+        instances = {}
+
+        def handle_post_create(sender, instance):
+            instances[instance.slug] = instance
+
+        signals.post_delete_instance.connect(handle_post_create)
+
+        user = fix.UserFactory.create()
+        response = yield self.http_client.fetch(
+            self.get_url('/user/%s' % user.id),
+            method='DELETE'
+        )
+        expect(response.code).to_equal(200)
+        expect(instances).to_include(user.slug)
