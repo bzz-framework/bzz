@@ -8,6 +8,9 @@ bzz - the rest framework for worker bees
 
 bzz is a rest framework aimed at building restful apis for the tornado web framework.
 
+.. image:: https://travis-ci.org/heynemann/bzz.svg?branch=master
+    :target: https://travis-ci.org/heynemann/bzz
+
 Getting Started
 ---------------
 
