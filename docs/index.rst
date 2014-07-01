@@ -55,9 +55,9 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
          callback=handle_user_created
       )
 
-   def handle_user_created(user):
+   def handle_user_created(response):
       # just making sure we got the actual user
-      assert user.name == 'Bernardo Heynemann'
+      assert response.code == 200
       io_loop.stop()
 
    # bzz includes a helper to return the routes for your models

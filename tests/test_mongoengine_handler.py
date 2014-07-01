@@ -50,6 +50,12 @@ class TestServer(server.Server):
 
 
 class MongoEngineRestHandlerTestCase(base.ApiTestCase):
+    def setUp(self):
+        super(MongoEngineRestHandlerTestCase, self).setUp()
+        signals.post_create_instance.receivers = {}
+        signals.post_update_instance.receivers = {}
+        signals.post_delete_instance.receivers = {}
+
     def get_config(self):
         return dict(
             MONGO_DATABASES={
