@@ -11,6 +11,10 @@ bzz is a rest framework aimed at building restful apis for the tornado web frame
 .. image:: https://travis-ci.org/heynemann/bzz.svg?branch=master
     :target: https://travis-ci.org/heynemann/bzz
 
+.. image:: https://coveralls.io/repos/heynemann/bzz/badge.png
+  :target: https://coveralls.io/r/heynemann/bzz
+
+
 Getting Started
 ---------------
 
