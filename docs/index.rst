@@ -75,6 +75,7 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
 .. toctree::
    :maxdepth: 2
 
+   mongoengine
    signals
 
 Indices and tables

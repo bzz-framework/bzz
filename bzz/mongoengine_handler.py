@@ -39,8 +39,12 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             (details_url, cls, dict(model=document_type, name=name, prefix=prefix))
         ]
 
-        #for name, field in document_type._fields.items():
+        #for field_name, field in document_type._fields.items():
             #if isinstance(field, mongoengine.EmbeddedDocumentField):
+                #embedded_url = r'/%s%s(?:/(?P<pk>[^/]+))/%s/?' % (prefix.lstrip('/'), name, field_name)
+                #routes.append(
+                    #(embedded_url, cls, dict(model=document_type, name=name, prefix=prefix))
+                #)
 
         return routes
 
@@ -50,20 +54,30 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
         for key, value in data.items():
             if '.' in key:
-                parts = key.split('.')
-                field = self.model._fields[parts[0]]
-
-                if getattr(instance, parts[0], None) is None:
-                    embedded_document = field.document_type()
-                    setattr(instance, parts[0], embedded_document)
-
-                setattr(getattr(instance, parts[0]), parts[1], value)
+                self.fill_property(self.model, instance, key, value)
             else:
                 setattr(instance, key, value)
 
         instance.save()
 
         raise gen.Return(instance)
+
+    def fill_property(self, model, instance, key, value):
+        parts = key.split('.')
+        field_name = parts[0]
+        property_name = '.'.join(parts[1:])
+        property_model = model
+
+        if getattr(instance, field_name, None) is None:
+            field = model._fields[field_name]
+            embedded_document = field.document_type()
+            setattr(instance, field_name, embedded_document)
+
+        if '.' not in property_name:
+            setattr(getattr(instance, field_name), property_name, value)
+        else:
+            new_instance = getattr(instance, field_name)
+            self.fill_property(new_instance.__class__, new_instance, property_name, value)
 
     @gen.coroutine
     def update_instance(self, pk, data):
