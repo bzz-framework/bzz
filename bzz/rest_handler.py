@@ -8,8 +8,9 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
-import tornado
+import tornado.web
 import tornado.gen as gen
+from six.moves.urllib.parse import unquote
 
 try:
     import ujson as json
@@ -82,10 +83,18 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
     def get_request_data(self):
         data = {}
-        for arg in list(self.request.arguments.keys()):
-            data[arg] = self.get_argument(arg)
-            if data[arg] == '':  # Tornado 3.0+ compatibility... Hard to test...
-                data[arg] = None
+
+        if self.request.body:
+            items = self.request.body.split('&')
+            for item in items:
+                key, value = item.split('=')
+                data[key] = unquote(value)
+        else:
+            for arg in list(self.request.arguments.keys()):
+                data[arg] = self.get_argument(arg)
+                if data[arg] == '':  # Tornado 3.0+ compatibility... Hard to test...
+                    data[arg] = None
+
         return data
 
     def dump_object(self, instance):

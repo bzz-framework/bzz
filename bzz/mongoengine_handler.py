@@ -29,6 +29,19 @@ def convert(name):
 class MongoEngineRestHandler(bzz.ModelRestHandler):
     @classmethod
     def routes_for(cls, document_type, prefix='', resource_name=None):
+        '''
+        Returns the tornado routes (as 3-tuples with url, handler, initializers) that correspond to the specified `document_type`.
+
+        Where:
+
+        * document_type is the MongoEngine model that you want routes for;
+        * prefix is an optional argument that can be specified as means to include a prefix route (i.e.: '/api');
+        * resource_name is an optional argument that can be specified to change the route name. If no resource_name specified the route name is the __class__.__name__ for the specified model with underscores instead of camel case.
+
+        If you specify a prefix of '/api/' as well as resource_name of 'people' your route would be similar to:
+
+        http://myserver/api/people/ (do a post to this url to create a new person)
+        '''
         name = resource_name
         if name is None:
             name = convert(document_type.__name__)
@@ -62,18 +75,30 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
         raise gen.Return(instance)
 
-    def fill_property(self, model, instance, key, value):
+    def fill_property(self, model, instance, key, value, updated_fields=None):
         parts = key.split('.')
         field_name = parts[0]
         property_name = '.'.join(parts[1:])
-        property_model = model
 
         if getattr(instance, field_name, None) is None:
             field = model._fields[field_name]
             embedded_document = field.document_type()
+
+            if updated_fields is not None:
+                updated_fields[field_name] = {
+                    'from': getattr(instance, field_name),
+                    'to': value
+                }
+
             setattr(instance, field_name, embedded_document)
 
         if '.' not in property_name:
+            if updated_fields is not None:
+                updated_fields[field_name] = {
+                    'from': getattr(instance, field_name),
+                    'to': str(value)
+                }
+
             setattr(getattr(instance, field_name), property_name, value)
         else:
             new_instance = getattr(instance, field_name)
@@ -84,11 +109,14 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         updated_fields = {}
         instance = yield self.get_instance(pk)
         for field, value in self.get_request_data().items():
-            updated_fields[field] = {
-                'from': getattr(instance, field),
-                'to': value
-            }
-            setattr(instance, field, value)
+            if '.' in field:
+                self.fill_property(self.model, instance, field, value, updated_fields)
+            else:
+                updated_fields[field] = {
+                    'from': getattr(instance, field),
+                    'to': value
+                }
+                setattr(instance, field, value)
         instance.save()
         raise gen.Return((instance, updated_fields))
 

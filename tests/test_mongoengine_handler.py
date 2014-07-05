@@ -305,7 +305,11 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         response = yield self.http_client.fetch(
             self.get_url('/parent/'),
             method='POST',
-            body='name=Bernardo%20Heynemann&child.first_name=Rodrigo&child.last_name=Lucena&child.child.first_name=Polo&child.child.last_name=Norte'
+            body='name=Bernardo%20Heynemann'
+            '&child.first_name=Rodrigo'
+            '&child.last_name=Lucena'
+            '&child.child.first_name=Polo'
+            '&child.child.last_name=Norte'
         )
 
         expect(response.code).to_equal(200)
@@ -323,6 +327,32 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(parent.child.child).not_to_be_null()
         expect(parent.child.child.first_name).to_equal('Polo')
         expect(parent.child.child.last_name).to_equal('Norte')
+
+    @testing.gen_test
+    def test_can_update_grandchild(self):
+        parent = models.Parent.objects.create(name="test-user")
+
+        response = yield self.http_client.fetch(
+            self.get_url('/parent/%s/' % str(parent.id)),
+            method='PUT',
+            body='child.first_name=Rodrigo'
+            '&child.last_name=Lucena'
+            '&child.child.first_name=Polo'
+            '&child.child.last_name=Norte'
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        loaded = models.Parent.objects.get(id=parent.id)
+
+        expect(loaded.child).not_to_be_null()
+        expect(loaded.child.first_name).to_equal('Rodrigo')
+        expect(loaded.child.last_name).to_equal('Lucena')
+
+        expect(loaded.child.child).not_to_be_null()
+        expect(loaded.child.child.first_name).to_equal('Polo')
+        expect(loaded.child.child.last_name).to_equal('Norte')
 
     #@testing.gen_test
     #def test_can_save_parent_then_child(self):

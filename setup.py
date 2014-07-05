@@ -55,6 +55,7 @@ bzz is a Rest API framework for working bees.
     install_requires=[
         'cow-framework',
         'blinker',
+        'six',
     ],
     extras_require={
         'tests': tests_require,
