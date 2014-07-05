@@ -26,8 +26,10 @@ Let's create a new server to save users:
 
 .. testsetup:: mongoengine_handler_example
 
+   import time
    import tornado.ioloop
    from tornado.httpclient import AsyncHTTPClient
+   from tornado.httpserver import HTTPServer
    from mongoengine import *
    io_loop = tornado.ioloop.IOLoop.instance()
    connect("doctest", host="localhost", port=3334)
@@ -39,6 +41,8 @@ Let's create a new server to save users:
    from mongoengine import *
    from bzz.mongoengine_handler import MongoEngineRestHandler
 
+   server = None
+
    # just create your own documents
    class User(Document):
       __collection__ = "MongoEngineHandlerUser"
@@ -47,7 +51,7 @@ Let's create a new server to save users:
    def create_user():
       # let's create a new user by posting it's data
       http_client.fetch(
-         '/user/',
+         'http://localhost:8890/user/',
          method='POST',
          body='name=Bernardo%20Heynemann',
          callback=handle_user_created
@@ -55,12 +59,18 @@ Let's create a new server to save users:
 
    def handle_user_created(response):
       # just making sure we got the actual user
-      assert response.code == 200
-      io_loop.stop()
+      try:
+         assert response.code == 200, response.code
+      finally:
+         server.stop()
+         io_loop.stop()
 
    # bzz includes a helper to return the routes for your models
    # returns a list of routes that match '/user/<user-id>/' and allows for:
    routes = MongoEngineRestHandler.routes_for(User)
 
+   User.objects.delete()
    application = tornado.web.Application(routes)
+   server = HTTPServer(application)
+   server.listen(8890)
    io_loop.add_timeout(1, create_user)

@@ -85,7 +85,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
         data = {}
 
         if self.request.body:
-            items = self.request.body.split('&')
+            items = self.request.body.decode('utf-8').split('&')
             for item in items:
                 key, value = item.split('=')
                 data[key] = unquote(value)

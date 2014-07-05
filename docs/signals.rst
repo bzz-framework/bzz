@@ -5,7 +5,9 @@ bzz uses the blinker library for signals. Using them is very simple:
 
 .. testsetup:: signal_post_create1
 
+   import time
    import tornado.ioloop
+   from tornado.httpserver import HTTPServer
    from tornado.httpclient import AsyncHTTPClient
    from mongoengine import *
    from bzz.signals import post_create_instance
@@ -21,6 +23,8 @@ bzz uses the blinker library for signals. Using them is very simple:
    from bzz.mongoengine_handler import MongoEngineRestHandler
    from bzz.signals import post_create_instance
 
+   server = None
+
    # just create your own documents
    class User(Document):
       __collection__ = "GettingStartedUser"
@@ -31,7 +35,7 @@ bzz uses the blinker library for signals. Using them is very simple:
       # we ignore the callback and response from http client
       # because we only need the signal in this example.
       http_client.fetch(
-         'http://localhost:8888/user/',
+         'http://localhost:8889/user/',
          method='POST',
          body='name=Bernardo%20Heynemann'
       )
@@ -41,6 +45,7 @@ bzz uses the blinker library for signals. Using them is very simple:
       try:
           assert instance.name == 'Bernardo Heynemann'
       finally:
+          server.stop()
           io_loop.stop()
 
    # just connect the signal to the event handler
@@ -49,9 +54,13 @@ bzz uses the blinker library for signals. Using them is very simple:
    # get routes for our model
    routes = MongoEngineRestHandler.routes_for(User)
 
+   # Make sure our test is clean
+   User.objects.delete()
+
    # create the server and run it
    application = tornado.web.Application(routes)
-   application.listen(8888)
+   server = HTTPServer(application)
+   server.listen(8889)
    io_loop.add_timeout(1, create_user)
    io_loop.start()
 
