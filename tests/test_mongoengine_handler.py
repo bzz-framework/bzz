@@ -44,7 +44,8 @@ class TestServer(server.Server):
     def get_handlers(self):
         routes = [
             bzz.MongoEngineRestHandler.routes_for(models.User),
-            bzz.MongoEngineRestHandler.routes_for(models.OtherUser)
+            bzz.MongoEngineRestHandler.routes_for(models.OtherUser),
+            bzz.MongoEngineRestHandler.routes_for(models.Parent)
         ]
         return [route for route_list in routes for route in route_list]
 
@@ -249,7 +250,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
             body='name=Rafael%20Floriano&email=rflorianobr@gmail.com'
         )
         expect(response.code).to_equal(200)
- 
+
         expect(instances).to_include('rafael-floriano')
         expect(updated).to_include('rafael-floriano')
         expect(updated['rafael-floriano']).to_be_like({
@@ -279,3 +280,22 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         )
         expect(response.code).to_equal(200)
         expect(instances).to_include(user.slug)
+
+    @testing.gen_test
+    def test_can_save_parent_with_child(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/parent/'),
+            method='POST',
+            body='name=Bernardo%20Heynemann&child.first_name=Rodrigo&child.last_name=Lucena'
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+        expect(response.headers).to_include('X-Created-Id')
+        expect(response.headers).to_include('location')
+
+        parent = models.Parent.objects.get(id=response.headers['X-Created-Id'])
+        expect(parent.name).to_equal('Bernardo Heynemann')
+        expect(parent.child).not_to_be_null()
+        expect(parent.child.first_name).to_equal('Rodrigo')
+        expect(parent.child.last_name).to_equal('Lucena')

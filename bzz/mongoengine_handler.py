@@ -12,6 +12,7 @@ import math
 import re
 
 import tornado.gen as gen
+import mongoengine
 
 import bzz.rest_handler as bzz
 
@@ -34,13 +35,32 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
         details_url = r'/%s%s(?:/(?P<pk>[^/]+)?)/?' % (prefix.lstrip('/'), name)
 
-        return [
+        routes = [
             (details_url, cls, dict(model=document_type, name=name, prefix=prefix))
         ]
 
+        #for name, field in document_type._fields.items():
+            #if isinstance(field, mongoengine.EmbeddedDocumentField):
+
+        return routes
+
     @gen.coroutine
     def save_new_instance(self, data):
-        instance = self.model(**data)
+        instance = self.model()
+
+        for key, value in data.items():
+            if '.' in key:
+                parts = key.split('.')
+                field = self.model._fields[parts[0]]
+
+                if getattr(instance, parts[0], None) is None:
+                    embedded_document = field.document_type()
+                    setattr(instance, parts[0], embedded_document)
+
+                setattr(getattr(instance, parts[0]), parts[1], value)
+            else:
+                setattr(instance, key, value)
+
         instance.save()
 
         raise gen.Return(instance)
