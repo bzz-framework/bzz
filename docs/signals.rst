@@ -36,7 +36,7 @@ bzz uses the blinker library for signals. Using them is very simple:
          body='name=Bernardo%20Heynemann'
       )
 
-   def handle_post_instance_created(handler, instance):
+   def handle_post_instance_created(sender, instance, handler):
       # just making sure we got the actual user
       try:
           assert instance.name == 'Bernardo Heynemann'
@@ -65,8 +65,9 @@ This signal is sent after a new instance is created (POST).
 
 Arguments:
 
-* sender - The tornado handler that created the new instance of your model.
+* sender - The model that assigned the signal
 * instance - The instance that was created.
+* handler - The tornado handler that created the new instance of your model.
 
 Example handler::
 
@@ -85,9 +86,10 @@ This signal is sent after an instance is updated (PUT).
 
 Arguments:
 
-* sender - The tornado handler that updated the instance of your model.
+* sender - The model that assigned the signal
 * instance - The instance that was updated.
 * updated_fields - The fields that were updated in the instance with the old and new values.
+* handler - The tornado handler that updated the instance of your model.
 
 The `updated_fields` format is like::
 
@@ -114,8 +116,9 @@ This signal is sent after a new instance is deleted (DELETE).
 
 Arguments:
 
-* sender - The tornado handler that created the new instance of your model.
+* sender - The model that assigned the signal
 * instance - The instance that was created.
+* handler - The tornado handler that created the new instance of your model.
 
 Example handler::
 

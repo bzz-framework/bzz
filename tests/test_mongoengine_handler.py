@@ -214,7 +214,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
     def test_can_subscribe_to_create_signal(self):
         instances = {}
 
-        def handle_post_create(sender, instance):
+        def handle_post_create(sender, instance, handler):
             instances[instance.slug] = instance
 
         signals.post_create_instance.connect(handle_post_create)
@@ -233,7 +233,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         instances = {}
         updated = {}
 
-        def handle_post_update(sender, instance, updated_fields):
+        def handle_post_update(sender, instance, updated_fields, handler):
             instances[instance.slug] = instance
             updated[instance.slug] = updated_fields
 
@@ -249,7 +249,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
             body='name=Rafael%20Floriano&email=rflorianobr@gmail.com'
         )
         expect(response.code).to_equal(200)
- 
+
         expect(instances).to_include('rafael-floriano')
         expect(updated).to_include('rafael-floriano')
         expect(updated['rafael-floriano']).to_be_like({
@@ -267,7 +267,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
     def test_can_subscribe_to_delete_signal(self):
         instances = {}
 
-        def handle_post_create(sender, instance):
+        def handle_post_create(sender, instance, handler):
             instances[instance.slug] = instance
 
         signals.post_delete_instance.connect(handle_post_create)

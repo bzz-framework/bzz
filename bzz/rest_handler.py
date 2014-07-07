@@ -46,7 +46,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def post(self, pk=None):
         instance = yield self.save_new_instance(self.get_request_data())
-        signals.post_create_instance.send(self, instance=instance)
+        signals.post_create_instance.send(self.model, instance=instance, handler=self)
         pk = self.get_instance_id(instance)
         self.set_header('X-Created-Id', pk)
         self.set_header('location', '/%s%s/%s/' % (
@@ -59,14 +59,14 @@ class ModelRestHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def put(self, pk):
         instance, updated = yield self.update_instance(pk, self.get_request_data())
-        signals.post_update_instance.send(self, instance=instance, updated_fields=updated)
+        signals.post_update_instance.send(self.model, instance=instance, updated_fields=updated, handler=self)
         self.write('OK')
 
     @gen.coroutine
     def delete(self, pk):
         instance = yield self.delete_instance(pk)
         if instance:
-            signals.post_delete_instance.send(self, instance=instance)
+            signals.post_delete_instance.send(self.model, instance=instance, handler=self)
             self.write('OK')
         else:
             self.write('FAIL')
