@@ -31,24 +31,27 @@ class ModelRestHandler(tornado.web.RequestHandler):
         self.write(json.dumps(obj))
 
     @gen.coroutine
-    def get(self, pk=None):
+    def get(self, *args, **kwargs):
+        obj, field_name, model, pk = yield self.get_parent_model(args)
+
         if pk is None:
             yield self.list()
             return
 
-        instance = yield self.get_instance(pk)
-        if instance is None:
+        if obj is None:
             self.send_error(status_code=404)
             return
 
-        self.write_json(self.dump_object(instance))
+        self.write_json(self.dump_object(obj))
         self.finish()
 
     @gen.coroutine
-    def post(self, pk=None):
-        instance = yield self.save_new_instance(self.get_request_data())
-        signals.post_create_instance.send(self.model, instance=instance, handler=self)
-        pk = self.get_instance_id(instance)
+    def post(self, *args, **kwargs):
+        obj, field_name, model, pk = yield self.get_parent_model(args)
+        instance = yield self.save_new_instance(model, self.get_request_data())
+        yield self.associate_instance(obj, field_name, instance)
+        signals.post_create_instance.send(model, instance=instance, handler=self)
+        pk = yield self.get_instance_id(instance)
         self.set_header('X-Created-Id', pk)
         self.set_header('location', '/%s%s/%s/' % (
             self.prefix,
@@ -58,13 +61,44 @@ class ModelRestHandler(tornado.web.RequestHandler):
         self.write('OK')
 
     @gen.coroutine
-    def put(self, pk):
+    def get_parent_model(self, args):
+        obj = None
+        args = [arg for arg in args if arg]
+        model = None
+        id_ = None
+
+        for part in args[:-1]:
+            property_, property_id = part.split('/')
+
+            if obj is None:
+                obj = yield self.get_instance(property_id)
+            else:
+                obj = getattr(obj, property_)
+
+        field_name = args[-1].lstrip('/')
+        if '/' in field_name:
+            field_name, id_ = field_name.split('/')
+            if obj is None:
+                obj = yield self.get_instance(id_)
+                model = obj.__class__
+            else:
+                obj = getattr(obj, field_name)
+
+        if model is None:
+            model = yield self.get_model(obj, field_name)
+
+        raise gen.Return([obj, field_name, model, id_])
+
+    @gen.coroutine
+    def put(self, *args, **kwargs):
+        obj, field_name, model, pk = yield self.get_parent_model(args)
         instance, updated = yield self.update_instance(pk, self.get_request_data())
         signals.post_update_instance.send(self.model, instance=instance, updated_fields=updated, handler=self)
         self.write('OK')
 
     @gen.coroutine
-    def delete(self, pk):
+    def delete(self, *args, **kwargs):
+        obj, field_name, model, pk = yield self.get_parent_model(args)
         instance = yield self.delete_instance(pk)
         if instance:
             signals.post_delete_instance.send(self.model, instance=instance, handler=self)

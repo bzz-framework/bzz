@@ -40,6 +40,12 @@ class OtherUser(mongoengine.Document):
     def get_id_field_name(cls):
         return OtherUser.slug
 
+
+class Team(mongoengine.Document):
+    name = mongoengine.StringField(required=True)
+    users = mongoengine.ListField(mongoengine.ReferenceField(User))
+
+
 class GrandChild(mongoengine.EmbeddedDocument):
     first_name = mongoengine.StringField(required=True)
     last_name = mongoengine.StringField(required=True)

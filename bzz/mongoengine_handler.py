@@ -46,24 +46,38 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         if name is None:
             name = convert(document_type.__name__)
 
-        details_url = r'/%s%s(?:/(?P<pk>[^/]+)?)/?' % (prefix.lstrip('/'), name)
+        details_regex = r'/(%s(?:/[^/]+)?)(/[^/]+(?:/[^/]+)?)*/?'
+
+        if prefix:
+            details_regex = ('/%s' % prefix.strip('/')) + details_regex
 
         routes = [
-            (details_url, cls, dict(model=document_type, name=name, prefix=prefix))
+            (details_regex % name, cls, dict(model=document_type, name=name, prefix=prefix))
         ]
 
-        #for field_name, field in document_type._fields.items():
-            #if isinstance(field, mongoengine.EmbeddedDocumentField):
-                #embedded_url = r'/%s%s(?:/(?P<pk>[^/]+))/%s/?' % (prefix.lstrip('/'), name, field_name)
-                #routes.append(
-                    #(embedded_url, cls, dict(model=document_type, name=name, prefix=prefix))
-                #)
+        # if name == 'team':
+        #     import ipdb; ipdb.set_trace()
+
+        #     for field_name, field in document_type._fields.items():
+        #         if isinstance(field, mongoengine.ListField):
+        #             if isinstance(field.field, mongoengine.ReferenceField):
+        #                 list_model = field.field.document_type
+
+        #                 embedded_url = r'/%s%s(?:/(?P<pk>[^/]+))/%s/?' % (prefix.lstrip('/'), name, field_name)
+        #                 routes.append(
+        #                     (embedded_url, list_model, dict(model=document_type, name=name, prefix=prefix))
+        #                 )
+        #         # if isinstance(field, mongoengine.EmbeddedDocumentField):
+        #         #     embedded_url = r'/%s%s(?:/(?P<pk>[^/]+))/%s/?' % (prefix.lstrip('/'), name, field_name)
+        #         #     routes.append(
+        #         #         (embedded_url, cls, dict(model=document_type, name=name, prefix=prefix))
+        #         #     )
 
         return routes
 
     @gen.coroutine
-    def save_new_instance(self, data):
-        instance = self.model()
+    def save_new_instance(self, model, data):
+        instance = model()
 
         for key, value in data.items():
             if '.' in key:
@@ -167,12 +181,13 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             data[field] = str(getattr(instance, field, None))
         return data
 
+    @gen.coroutine
     def get_instance_id(self, instance):
         field = getattr(self.model, 'get_id_field_name', None)
         if field:
-            return str(getattr(instance, field().name))
+            raise gen.Return(str(getattr(instance, field().name)))
 
-        return str(instance.id)
+        raise gen.Return(str(instance.id))
 
     def get_id_field_name(self):
         field = getattr(self.model, 'get_id_field_name', None)
@@ -180,3 +195,18 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             return field().name
 
         return 'id'
+
+    @gen.coroutine
+    def get_model(self, obj, field_name):
+        if obj is None:
+            raise gen.Return(self.model)
+
+        field = getattr(obj.__class__, field_name)
+        raise gen.Return(field.field.document_type)
+
+    @gen.coroutine
+    def associate_instance(self, obj, field_name, instance):
+        if obj is None:
+            return
+        getattr(obj, field_name).append(instance)
+        obj.save()

@@ -13,6 +13,8 @@ try:
 except ImportError:
     import json
 
+import urllib
+from nose_focus import focus
 import mongoengine
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
@@ -45,7 +47,8 @@ class TestServer(server.Server):
         routes = [
             bzz.MongoEngineRestHandler.routes_for(models.User),
             bzz.MongoEngineRestHandler.routes_for(models.OtherUser),
-            bzz.MongoEngineRestHandler.routes_for(models.Parent)
+            bzz.MongoEngineRestHandler.routes_for(models.Parent),
+            bzz.MongoEngineRestHandler.routes_for(models.Team),
         ]
         return [route for route_list in routes for route in route_list]
 
@@ -381,3 +384,18 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         #expect(parent.child).not_to_be_null()
         #expect(parent.child.first_name).to_equal('Rodrigo')
         #expect(parent.child.last_name).to_equal('Lucena')
+
+    @testing.gen_test
+    def test_can_save_user_team(self):
+        team = models.Team.objects.create(name="test-team")
+
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/' % str(team.id)),
+            method='POST',
+            body='name=Bernardo%20Heynemann&email=foo@bar.com'
+        )
+
+        team = models.Team.objects.get(id=team.id)
+
+        expect(response.code).to_equal(200)
+        expect(team.users).to_length(1)
