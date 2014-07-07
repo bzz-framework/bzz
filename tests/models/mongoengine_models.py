@@ -39,3 +39,18 @@ class OtherUser(mongoengine.Document):
     @classmethod
     def get_id_field_name(cls):
         return OtherUser.slug
+
+class GrandChild(mongoengine.EmbeddedDocument):
+    first_name = mongoengine.StringField(required=True)
+    last_name = mongoengine.StringField(required=True)
+
+
+class Child(mongoengine.EmbeddedDocument):
+    first_name = mongoengine.StringField(required=True)
+    last_name = mongoengine.StringField(required=True)
+    child = mongoengine.EmbeddedDocumentField(GrandChild, required=False)
+
+
+class Parent(mongoengine.Document):
+    name = mongoengine.StringField(required=True)
+    child = mongoengine.EmbeddedDocumentField(Child, required=False)

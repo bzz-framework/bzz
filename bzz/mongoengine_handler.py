@@ -12,6 +12,7 @@ import math
 import re
 
 import tornado.gen as gen
+import mongoengine
 
 import bzz.rest_handler as bzz
 
@@ -28,33 +29,94 @@ def convert(name):
 class MongoEngineRestHandler(bzz.ModelRestHandler):
     @classmethod
     def routes_for(cls, document_type, prefix='', resource_name=None):
+        '''
+        Returns the tornado routes (as 3-tuples with url, handler, initializers) that correspond to the specified `document_type`.
+
+        Where:
+
+        * document_type is the MongoEngine model that you want routes for;
+        * prefix is an optional argument that can be specified as means to include a prefix route (i.e.: '/api');
+        * resource_name is an optional argument that can be specified to change the route name. If no resource_name specified the route name is the __class__.__name__ for the specified model with underscores instead of camel case.
+
+        If you specify a prefix of '/api/' as well as resource_name of 'people' your route would be similar to:
+
+        http://myserver/api/people/ (do a post to this url to create a new person)
+        '''
         name = resource_name
         if name is None:
             name = convert(document_type.__name__)
 
         details_url = r'/%s%s(?:/(?P<pk>[^/]+)?)/?' % (prefix.lstrip('/'), name)
 
-        return [
+        routes = [
             (details_url, cls, dict(model=document_type, name=name, prefix=prefix))
         ]
 
+        #for field_name, field in document_type._fields.items():
+            #if isinstance(field, mongoengine.EmbeddedDocumentField):
+                #embedded_url = r'/%s%s(?:/(?P<pk>[^/]+))/%s/?' % (prefix.lstrip('/'), name, field_name)
+                #routes.append(
+                    #(embedded_url, cls, dict(model=document_type, name=name, prefix=prefix))
+                #)
+
+        return routes
+
     @gen.coroutine
     def save_new_instance(self, data):
-        instance = self.model(**data)
+        instance = self.model()
+
+        for key, value in data.items():
+            if '.' in key:
+                self.fill_property(self.model, instance, key, value)
+            else:
+                setattr(instance, key, value)
+
         instance.save()
 
         raise gen.Return(instance)
+
+    def fill_property(self, model, instance, key, value, updated_fields=None):
+        parts = key.split('.')
+        field_name = parts[0]
+        property_name = '.'.join(parts[1:])
+
+        if getattr(instance, field_name, None) is None:
+            field = model._fields[field_name]
+            embedded_document = field.document_type()
+
+            if updated_fields is not None:
+                updated_fields[field_name] = {
+                    'from': getattr(instance, field_name),
+                    'to': value
+                }
+
+            setattr(instance, field_name, embedded_document)
+
+        if '.' not in property_name:
+            if updated_fields is not None:
+                updated_fields[field_name] = {
+                    'from': getattr(instance, field_name),
+                    'to': str(value)
+                }
+
+            setattr(getattr(instance, field_name), property_name, value)
+        else:
+            new_instance = getattr(instance, field_name)
+            self.fill_property(new_instance.__class__, new_instance, property_name, value)
 
     @gen.coroutine
     def update_instance(self, pk, data):
         updated_fields = {}
         instance = yield self.get_instance(pk)
         for field, value in self.get_request_data().items():
-            updated_fields[field] = {
-                'from': getattr(instance, field),
-                'to': value
-            }
-            setattr(instance, field, value)
+            if '.' in field:
+                self.fill_property(self.model, instance, field, value, updated_fields)
+            else:
+                updated_fields[field] = {
+                    'from': getattr(instance, field),
+                    'to': value
+                }
+                setattr(instance, field, value)
         instance.save()
         raise gen.Return((instance, updated_fields))
 

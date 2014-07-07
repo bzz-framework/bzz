@@ -29,7 +29,9 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
 .. testsetup:: getting_started
 
    import tornado.ioloop
+   import time
    from tornado.httpclient import AsyncHTTPClient
+   from tornado.httpserver import HTTPServer
    from mongoengine import *
    io_loop = tornado.ioloop.IOLoop.instance()
    connect("doctest", host="localhost", port=3334)
@@ -41,6 +43,8 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    from mongoengine import *
    from bzz.mongoengine_handler import MongoEngineRestHandler
 
+   server = None
+
    # just create your own documents
    class User(Document):
       __collection__ = "GettingStartedUser"
@@ -49,7 +53,7 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    def create_user():
       # let's create a new user by posting it's data
       http_client.fetch(
-         '/user/',
+         'http://localhost:8888/user/',
          method='POST',
          body='name=Bernardo%20Heynemann',
          callback=handle_user_created
@@ -57,8 +61,11 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
 
    def handle_user_created(response):
       # just making sure we got the actual user
-      assert response.code == 200
-      io_loop.stop()
+      try:
+          assert response.code == 200
+      finally:
+          server.stop()
+          io_loop.stop()
 
    # bzz includes a helper to return the routes for your models
    # returns a list of routes that match '/user/<user-id>/' and allows for:
@@ -69,12 +76,18 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    # * DELETE with user-id - Removes instance
    routes = MongoEngineRestHandler.routes_for(User)
 
+   # Make sure our test is clean
+   User.objects.delete()
+
    application = tornado.web.Application(routes)
+   server = HTTPServer(application)
+   server.listen(8888)
    io_loop.add_timeout(1, create_user)
 
 .. toctree::
    :maxdepth: 2
 
+   mongoengine
    signals
 
 Indices and tables

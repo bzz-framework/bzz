@@ -44,7 +44,8 @@ class TestServer(server.Server):
     def get_handlers(self):
         routes = [
             bzz.MongoEngineRestHandler.routes_for(models.User),
-            bzz.MongoEngineRestHandler.routes_for(models.OtherUser)
+            bzz.MongoEngineRestHandler.routes_for(models.OtherUser),
+            bzz.MongoEngineRestHandler.routes_for(models.Parent)
         ]
         return [route for route_list in routes for route in route_list]
 
@@ -279,3 +280,104 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         )
         expect(response.code).to_equal(200)
         expect(instances).to_include(user.slug)
+
+    @testing.gen_test
+    def test_can_save_parent_with_child(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/parent/'),
+            method='POST',
+            body='name=Bernardo%20Heynemann&child.first_name=Rodrigo&child.last_name=Lucena'
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+        expect(response.headers).to_include('X-Created-Id')
+        expect(response.headers).to_include('location')
+
+        parent = models.Parent.objects.get(id=response.headers['X-Created-Id'])
+        expect(parent.name).to_equal('Bernardo Heynemann')
+        expect(parent.child).not_to_be_null()
+        expect(parent.child.first_name).to_equal('Rodrigo')
+        expect(parent.child.last_name).to_equal('Lucena')
+
+    @testing.gen_test
+    def test_can_save_parent_with_grandchild(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/parent/'),
+            method='POST',
+            body='name=Bernardo%20Heynemann'
+            '&child.first_name=Rodrigo'
+            '&child.last_name=Lucena'
+            '&child.child.first_name=Polo'
+            '&child.child.last_name=Norte'
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+        expect(response.headers).to_include('X-Created-Id')
+        expect(response.headers).to_include('location')
+
+        parent = models.Parent.objects.get(id=response.headers['X-Created-Id'])
+        expect(parent.name).to_equal('Bernardo Heynemann')
+
+        expect(parent.child).not_to_be_null()
+        expect(parent.child.first_name).to_equal('Rodrigo')
+        expect(parent.child.last_name).to_equal('Lucena')
+
+        expect(parent.child.child).not_to_be_null()
+        expect(parent.child.child.first_name).to_equal('Polo')
+        expect(parent.child.child.last_name).to_equal('Norte')
+
+    @testing.gen_test
+    def test_can_update_grandchild(self):
+        parent = models.Parent.objects.create(name="test-user")
+
+        response = yield self.http_client.fetch(
+            self.get_url('/parent/%s/' % str(parent.id)),
+            method='PUT',
+            body='child.first_name=Rodrigo'
+            '&child.last_name=Lucena'
+            '&child.child.first_name=Polo'
+            '&child.child.last_name=Norte'
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        loaded = models.Parent.objects.get(id=parent.id)
+
+        expect(loaded.child).not_to_be_null()
+        expect(loaded.child.first_name).to_equal('Rodrigo')
+        expect(loaded.child.last_name).to_equal('Lucena')
+
+        expect(loaded.child.child).not_to_be_null()
+        expect(loaded.child.child.first_name).to_equal('Polo')
+        expect(loaded.child.child.last_name).to_equal('Norte')
+
+    #@testing.gen_test
+    #def test_can_save_parent_then_child(self):
+        #response = yield self.http_client.fetch(
+            #self.get_url('/parent/'),
+            #method='POST',
+            #body='name=Bernardo%20Heynemann'
+        #)
+
+        #expect(response.code).to_equal(200)
+        #expect(response.body).to_equal('OK')
+        #expect(response.headers).to_include('X-Created-Id')
+        #pk = response.headers['X-Created-Id']
+
+        #response = yield self.http_client.fetch(
+            #self.get_url('/parent/%s/child/' % pk),
+            #method='POST',
+            #body='first_name=Rodrigo&last_name=Lucena'
+        #)
+
+        #expect(response.code).to_equal(200)
+        #expect(response.body).to_equal('OK')
+
+        #parent = models.Parent.objects.get(id=pk)
+        #expect(parent.name).to_equal('Bernardo Heynemann')
+        #expect(parent.child).not_to_be_null()
+        #expect(parent.child.first_name).to_equal('Rodrigo')
+        #expect(parent.child.last_name).to_equal('Lucena')
