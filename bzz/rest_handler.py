@@ -216,7 +216,8 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
     def get_model_type(self, obj, args):
         for index, arg in enumerate(args[:-1]):
-            obj = getattr(obj, arg)
+            property_name, pk = arg.split('/')
+            obj = getattr(obj, property_name)
 
         return self.get_property_model(obj, args[-1])
 
@@ -251,20 +252,74 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
     @gen.coroutine
     def put(self, *args, **kwargs):
-        obj, field_name, model, pk = yield self.get_parent_model(args)
-        instance, updated = yield self.update_instance(pk, self.get_request_data())
-        signals.post_update_instance.send(self.model, instance=instance, updated_fields=updated, handler=self)
+        args = self.parse_arguments(args)
+        instance = None
+
+        if len(args) == 1 and '/' not in args[0]:
+            self.send_error(400)
+            return
+
+        instance, updated, model = yield self.handle_update(args)
+        signals.post_update_instance.send(model, instance=instance, updated_fields=updated, handler=self)
         self.write('OK')
 
     @gen.coroutine
+    def handle_update(self, args):
+        path, pk = args[0].split('/')
+        root = yield self.get_instance(pk)
+        model_type = root.__class__
+        if len(args) > 1:
+            model_type = self.get_model_type(root, args[1:])
+            property_name, pk = args[-1].split('/')
+        instance, updated = yield self.update_instance(pk, self.get_request_data(), model_type)
+        raise gen.Return([instance, updated, model_type])
+
+    @gen.coroutine
     def delete(self, *args, **kwargs):
-        obj, field_name, model, pk = yield self.get_parent_model(args)
-        instance = yield self.delete_instance(pk)
+        args = self.parse_arguments(args)
+
+        if len(args) == 1 and '/' not in args[0]:
+            self.send_error(400)
+            return
+
+        path, pk = args[0].split('/')
+        root = yield self.get_instance(pk)
+        model_type = root.__class__
+        instance = None
+
+        if len(args) > 1:
+            model_type = self.get_model_type(root, args[1:])
+            property_name, pk = args[-1].split('/')
+            instance = yield self.get_instance(pk, model_type)
+            instance = yield self.handle_delete_association(root, instance, property_name)
+        else:
+            instance = yield self.handle_delete_instance(pk)
+
+        # obj, field_name, model, pk = yield self.get_parent_model(args)
+        # instance = yield self.delete_instance(pk)
         if instance:
-            signals.post_delete_instance.send(self.model, instance=instance, handler=self)
+            signals.post_delete_instance.send(model_type, instance=instance, handler=self)
             self.write('OK')
         else:
             self.write('FAIL')
+
+    @gen.coroutine
+    def handle_delete_instance(self, pk):
+        instance = yield self.delete_instance(pk)
+        raise gen.Return(instance)
+
+    @gen.coroutine
+    def handle_delete_association(self, root, instance, property_name):
+        property_list = getattr(root, property_name, [])
+
+        try:
+            property_list.remove(instance)
+            root.save()
+        except ValueError:
+            self.send_error(400)
+            return
+
+        raise gen.Return(instance)
 
     @gen.coroutine
     def list(self):

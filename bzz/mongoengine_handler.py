@@ -61,12 +61,15 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             self.fill_property(new_instance.__class__, new_instance, property_name, value)
 
     @gen.coroutine
-    def update_instance(self, pk, data):
+    def update_instance(self, pk, data, model=None):
+        if model is None:
+            model = self.model
+
         updated_fields = {}
-        instance = yield self.get_instance(pk)
+        instance = yield self.get_instance(pk, model)
         for field, value in self.get_request_data().items():
             if '.' in field:
-                self.fill_property(self.model, instance, field, value, updated_fields)
+                self.fill_property(model, instance, field, value, updated_fields)
             else:
                 updated_fields[field] = {
                     'from': getattr(instance, field),
@@ -84,12 +87,15 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         raise gen.Return(instance)
 
     @gen.coroutine
-    def get_instance(self, instance_id):
+    def get_instance(self, instance_id, model=None):
+        if model is None:
+            model = self.model
+
         instance = None
         field = self.get_id_field_name()
 
         if instance_id:
-            instance = self.model.objects.filter(**{field: instance_id}).first()
+            instance = model.objects.filter(**{field: instance_id}).first()
 
         raise gen.Return(instance)
 
@@ -162,7 +168,13 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         obj.save()
 
     def get_property_model(self, obj, field_name):
-        field = obj._fields[field_name]
+        property_name = field_name
+        pk = None
+
+        if '/' in field_name:
+            property_name, pk = field_name.split('/')
+
+        field = obj._fields[property_name]
         if isinstance(field, mongoengine.ListField):
             if isinstance(field.field, mongoengine.ReferenceField):
                 return field.field.document_type

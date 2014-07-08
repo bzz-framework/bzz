@@ -399,11 +399,25 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(team.users).to_length(1)
 
     @testing.gen_test
-    def test_can_get_users_in_team(self):
+    def test_can_get_user_in_team(self):
+        user = fix.UserFactory.create()
+        team = models.Team.objects.create(name="test-team", users=[user])
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/%s' % (team.id, user.id)),
+        )
+        expect(response.code).to_equal(200)
+        obj = load_json(response.body)
+        expect(obj['email']).to_equal(user.email)
+        expect(obj['name']).to_equal(user.name)
+        expect(obj['slug']).to_equal(user.slug)
+
+    @testing.gen_test
+    def test_can_get_users_list_in_team(self):
         user = models.User(name='Bernardo Heynemann', email='heynemann@gmail.com')
         user.save()
-        team = models.Team(name="test-team", users=[user])
-        team.save()
+        user2 = models.User(name='Rafael Floriano', email='rflorianobr@gmail.com')
+        user2.save()
+        team = models.Team.objects.create(name="test-team", users=[user, user2])
 
         response = yield self.http_client.fetch(
             self.get_url('/team/%s/users/' % str(team.id)),
@@ -413,9 +427,11 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(response.body).not_to_be_empty()
 
         obj = json.loads(response.body)
-        expect(obj).to_length(1)
+        expect(obj).to_length(2)
         expect(obj[0]['name']).to_equal('Bernardo Heynemann')
         expect(obj[0]['email']).to_equal('heynemann@gmail.com')
+        expect(obj[1]['name']).to_equal('Rafael Floriano')
+        expect(obj[1]['email']).to_equal('rflorianobr@gmail.com')
 
     @testing.gen_test
     def test_can_get_addresses_for_user_in_team(self):
@@ -436,3 +452,62 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         obj = json.loads(response.body)
         expect(obj).to_length(1)
         expect(obj[0]['street']).to_equal(address.street)
+
+    @testing.gen_test
+    def test_can_update_user_in_team(self):
+        user = fix.UserFactory.create()
+        team = models.Team.objects.create(name="test-team", users=[user])
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/%s' % (team.id, user.id)),
+            method='PUT',
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body='name=Rafael%20Floriano&email=rflorianobr@gmail.com'
+        )
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        loaded_user = models.User.objects.get(id=user.id)
+        expect(loaded_user.name).to_equal('Rafael Floriano')
+        expect(loaded_user.slug).to_equal('rafael-floriano')
+        expect(loaded_user.email).to_equal('rflorianobr@gmail.com')
+
+    @testing.gen_test
+    def test_can_delete_user_in_team(self):
+        user = fix.UserFactory.create()
+        team = models.Team.objects.create(name="test-team", users=[user])
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/%s' % (str(team.id), str(user.id))),
+            method='DELETE'
+        )
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        user.reload()
+        team.reload()
+        expect(user).not_to_be_null()
+        expect(team.users).to_be_empty()
+
+    # @focus
+    # @testing.gen_test
+    # def test_can_delete_addresses_for_user_in_team(self):
+    #     address = models.Address(street='Somewhere Else')
+    #     address.save()
+    #     user = models.User(name='Bernardo Heynemann', email='heynemann@gmail.com', addresses=[address])
+    #     user.save()
+    #     team = models.Team(name="test-team", users=[user])
+    #     team.save()
+
+    #     response = yield self.http_client.fetch(
+    #         self.get_url('/team/%s/users/%s/addresses/%s' % (str(team.id), str(user.id), str(address.id))),
+    #         method='DELETE'
+    #     )
+
+    #     expect(response.code).to_equal(200)
+    #     expect(response.body).to_equal('OK')
+
+    #     user.reload()
+    #     team.reload()
+    #     expect(user).not_to_be_null()
+    #     expect(team.users).to_be_empty()
