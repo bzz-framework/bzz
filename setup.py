@@ -25,6 +25,7 @@ tests_require = [
     'sphinx',
     'mongoengine',
     'awesome-slugify',
+    'nose-focus',
 ]
 
 setup(

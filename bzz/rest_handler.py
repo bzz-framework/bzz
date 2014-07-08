@@ -18,9 +18,47 @@ except ImportError:
     import json
 
 import bzz.signals as signals
+import bzz.utils as utils
+
+
+AVAILABLE_HANDLERS = {
+    'mongoengine': 'bzz.mongoengine_handler.MongoEngineRestHandler'
+}
 
 
 class ModelRestHandler(tornado.web.RequestHandler):
+    @classmethod
+    def routes_for(cls, handler, model, prefix='', resource_name=None):
+        '''
+        Returns the tornado routes (as 3-tuples with url, handler, initializers) that correspond to the specified `model`.
+
+        Where:
+
+        * model is the Model class that you want routes for;
+        * prefix is an optional argument that can be specified as means to include a prefix route (i.e.: '/api');
+        * resource_name is an optional argument that can be specified to change the route name. If no resource_name specified the route name is the __class__.__name__ for the specified model with underscores instead of camel case.
+
+        If you specify a prefix of '/api/' as well as resource_name of 'people' your route would be similar to:
+
+        http://myserver/api/people/ (do a post to this url to create a new person)
+        '''
+        handler_name = AVAILABLE_HANDLERS.get(handler, handler)
+        handler_class = utils.get_class(handler_name)
+        name = resource_name
+        if name is None:
+            name = utils.convert(model.__name__)
+
+        details_regex = r'/(%s(?:/[^/]+)?)(/[^/]+(?:/[^/]+)?)*/?'
+
+        if prefix:
+            details_regex = ('/%s' % prefix.strip('/')) + details_regex
+
+        routes = [
+            (details_regex % name, handler_class, dict(model=model, name=name, prefix=prefix))
+        ]
+
+        return routes
+
     def initialize(self, model, name, prefix):
         self.model = model
         self.name = name

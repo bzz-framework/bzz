@@ -13,8 +13,6 @@ try:
 except ImportError:
     import json
 
-import urllib
-from nose_focus import focus
 import mongoengine
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
@@ -23,7 +21,7 @@ from preggy import expect
 import derpconf.config as config
 import bson.objectid as oid
 
-import bzz.mongoengine_handler as bzz
+import bzz
 import bzz.signals as signals
 import tests.base as base
 import tests.models.mongoengine_models as models
@@ -45,10 +43,10 @@ class TestServer(server.Server):
 
     def get_handlers(self):
         routes = [
-            bzz.MongoEngineRestHandler.routes_for(models.User),
-            bzz.MongoEngineRestHandler.routes_for(models.OtherUser),
-            bzz.MongoEngineRestHandler.routes_for(models.Parent),
-            bzz.MongoEngineRestHandler.routes_for(models.Team),
+            bzz.ModelRestHandler.routes_for('mongoengine', models.User),
+            bzz.ModelRestHandler.routes_for('mongoengine', models.OtherUser),
+            bzz.ModelRestHandler.routes_for('mongoengine', models.Parent),
+            bzz.ModelRestHandler.routes_for('mongoengine', models.Team),
         ]
         return [route for route_list in routes for route in route_list]
 

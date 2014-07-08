@@ -9,7 +9,6 @@
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
 import math
-import re
 
 import tornado.gen as gen
 import mongoengine
@@ -17,64 +16,7 @@ import mongoengine
 import bzz.rest_handler as bzz
 
 
-first_cap_re = re.compile('(.)([A-Z][a-z]+)')
-all_cap_re = re.compile('([a-z0-9])([A-Z])')
-
-
-def convert(name):
-    s1 = first_cap_re.sub(r'\1_\2', name)
-    return all_cap_re.sub(r'\1_\2', s1).lower()
-
-
 class MongoEngineRestHandler(bzz.ModelRestHandler):
-    @classmethod
-    def routes_for(cls, document_type, prefix='', resource_name=None):
-        '''
-        Returns the tornado routes (as 3-tuples with url, handler, initializers) that correspond to the specified `document_type`.
-
-        Where:
-
-        * document_type is the MongoEngine model that you want routes for;
-        * prefix is an optional argument that can be specified as means to include a prefix route (i.e.: '/api');
-        * resource_name is an optional argument that can be specified to change the route name. If no resource_name specified the route name is the __class__.__name__ for the specified model with underscores instead of camel case.
-
-        If you specify a prefix of '/api/' as well as resource_name of 'people' your route would be similar to:
-
-        http://myserver/api/people/ (do a post to this url to create a new person)
-        '''
-        name = resource_name
-        if name is None:
-            name = convert(document_type.__name__)
-
-        details_regex = r'/(%s(?:/[^/]+)?)(/[^/]+(?:/[^/]+)?)*/?'
-
-        if prefix:
-            details_regex = ('/%s' % prefix.strip('/')) + details_regex
-
-        routes = [
-            (details_regex % name, cls, dict(model=document_type, name=name, prefix=prefix))
-        ]
-
-        # if name == 'team':
-        #     import ipdb; ipdb.set_trace()
-
-        #     for field_name, field in document_type._fields.items():
-        #         if isinstance(field, mongoengine.ListField):
-        #             if isinstance(field.field, mongoengine.ReferenceField):
-        #                 list_model = field.field.document_type
-
-        #                 embedded_url = r'/%s%s(?:/(?P<pk>[^/]+))/%s/?' % (prefix.lstrip('/'), name, field_name)
-        #                 routes.append(
-        #                     (embedded_url, list_model, dict(model=document_type, name=name, prefix=prefix))
-        #                 )
-        #         # if isinstance(field, mongoengine.EmbeddedDocumentField):
-        #         #     embedded_url = r'/%s%s(?:/(?P<pk>[^/]+))/%s/?' % (prefix.lstrip('/'), name, field_name)
-        #         #     routes.append(
-        #         #         (embedded_url, cls, dict(model=document_type, name=name, prefix=prefix))
-        #         #     )
-
-        return routes
-
     @gen.coroutine
     def save_new_instance(self, model, data):
         instance = model()

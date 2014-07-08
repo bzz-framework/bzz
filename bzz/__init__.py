@@ -9,3 +9,4 @@
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
 from bzz.version import __version__
+from bzz.rest_handler import ModelRestHandler
