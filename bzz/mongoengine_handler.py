@@ -94,7 +94,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         raise gen.Return(instance)
 
     @gen.coroutine
-    def get_list(self, per_page=20):
+    def get_list(self, items=None, per_page=20):
         pages = int(math.ceil(self.model.objects.count() / float(per_page)))
         try:
             page = int(self.get_argument('page', 1))
@@ -112,7 +112,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         items = self.model.objects.all()[start:stop]
         raise gen.Return(items)
 
-    def dump_list(self, items):
+    def dump_list(self, items, per_page=20):
         dumped = []
 
         for item in items:
@@ -160,3 +160,9 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             return
         getattr(obj, field_name).append(instance)
         obj.save()
+
+    def get_property_model(self, obj, field_name):
+        field = obj._fields[field_name]
+        if isinstance(field, mongoengine.ListField):
+            if isinstance(field.field, mongoengine.ReferenceField):
+                return field.field.document_type

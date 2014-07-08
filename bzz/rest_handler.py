@@ -170,10 +170,27 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
     @gen.coroutine
     def post(self, *args, **kwargs):
-        obj, field_name, model, pk = yield self.get_parent_model(args)
-        instance = yield self.save_new_instance(model, self.get_request_data())
-        yield self.associate_instance(obj, field_name, instance)
-        signals.post_create_instance.send(model, instance=instance, handler=self)
+        args = self.parse_arguments(args)
+
+        instance = None
+
+        if len(args) == 1:
+            if '/' in args[0]:
+                self.send_error(400)
+                return
+
+            instance = yield self.handle_create_one(args)
+        else:
+            instance = yield self.handle_create_and_associate(args)
+
+        #obj, field_name, model, pk = yield self.get_parent_model(args)
+        #instance = yield self.save_new_instance(model, self.get_request_data())
+        #yield self.associate_instance(obj, field_name, instance)
+        signals.post_create_instance.send(
+            instance.__class__,
+            instance=instance,
+            handler=self
+        )
         pk = yield self.get_instance_id(instance)
         self.set_header('X-Created-Id', pk)
         self.set_header('location', '/%s%s/%s/' % (
@@ -182,6 +199,26 @@ class ModelRestHandler(tornado.web.RequestHandler):
             pk
         ))
         self.write('OK')
+
+    @gen.coroutine
+    def handle_create_one(self, args):
+        instance = yield self.save_new_instance(self.model, self.get_request_data())
+        raise gen.Return(instance)
+
+    @gen.coroutine
+    def handle_create_and_associate(self, args):
+        path, pk = args[0].split('/')
+        root = yield self.get_instance(pk)
+        model_type = self.get_model_type(root, args[1:])
+        instance = yield self.save_new_instance(model_type, self.get_request_data())
+        yield self.associate_instance(root, args[-1], instance)
+        raise gen.Return(instance)
+
+    def get_model_type(self, obj, args):
+        for index, arg in enumerate(args[:-1]):
+            obj = getattr(obj, arg)
+
+        return self.get_property_model(obj, args[-1])
 
     @gen.coroutine
     def get_parent_model(self, args):
