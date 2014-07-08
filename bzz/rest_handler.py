@@ -48,7 +48,8 @@ class ModelRestHandler(tornado.web.RequestHandler):
         if name is None:
             name = utils.convert(model.__name__)
 
-        details_regex = r'/(%s(?:/[^/]+)?)(/[^/]+(?:/[^/]+)?)*/?'
+        details_regex = r'/(%s(?:/[^/]+)?)((?:/[^/]+)*)/?'
+        #^\/(team(?:\/.+?)?)(\/.+(?:\/.+?)?)*$
 
         if prefix:
             details_regex = ('/%s' % prefix.strip('/')) + details_regex
@@ -68,9 +69,28 @@ class ModelRestHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", "application/json")
         self.write(json.dumps(obj))
 
+    def parse_arguments(self, args):
+        args = [arg.lstrip('/') for arg in args if arg]
+        if len(args) == 1:
+            return args
+
+        parts = args[1].split('/')
+
+        items = []
+        current_item = []
+        for part in parts:
+            current_item.append(part)
+            if len(current_item) == 2:
+                items.append('/'.join(current_item))
+                current_item = []
+        if current_item:
+            items.append(current_item[0])
+
+        return [args[0]] + items
+
     @gen.coroutine
     def get(self, *args, **kwargs):
-        args = [arg.lstrip('/') for arg in args if arg]
+        args = self.parse_arguments(args)
         if '/' in args[-1]:
             yield self.handle_get_one(args)
         else:
@@ -115,7 +135,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
         if len(args) == 1:
             raise gen.Return((True, obj))
 
-        obj = self.get_instance_property(obj, args[1:])
+        obj = yield self.get_instance_property(obj, args[1:])
 
         if obj is None:
             self.send_error(status_code=404)
@@ -123,6 +143,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
         raise gen.Return((True, obj))
 
+    @gen.coroutine
     def get_instance_property(self, obj, path):
         parts = [part.lstrip('/').split('/') for part in path if part]
         for part in parts:
@@ -133,10 +154,19 @@ class ModelRestHandler(tornado.web.RequestHandler):
                 pk = part[1]
 
             obj = getattr(obj, path)
-            if pk is not None and self.get_instance_id(obj) != pk:
-                return None
 
-        return obj
+            if pk is not None:
+                if isinstance(obj, (list, tuple)):
+                    for item in obj:
+                        instance_id = yield self.get_instance_id(item)
+                        if instance_id == pk:
+                            obj = item
+                else:
+                    instance_id = yield self.get_instance_id(item)
+                    if instance_id != pk:
+                        raise gen.Return(None)
+
+        raise gen.Return(obj)
 
     @gen.coroutine
     def post(self, *args, **kwargs):

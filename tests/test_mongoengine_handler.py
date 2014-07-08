@@ -416,3 +416,23 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(obj).to_length(1)
         expect(obj[0]['name']).to_equal('Bernardo Heynemann')
         expect(obj[0]['email']).to_equal('heynemann@gmail.com')
+
+    @testing.gen_test
+    def test_can_get_addresses_for_user_in_team(self):
+        address = models.Address(street='Somewhere Else')
+        address.save()
+        user = models.User(name='Bernardo Heynemann', email='heynemann@gmail.com', addresses=[address])
+        user.save()
+        team = models.Team(name="test-team", users=[user])
+        team.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/%s/addresses' % (str(team.id), str(user.id))),
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).not_to_be_empty()
+
+        obj = json.loads(response.body)
+        expect(obj).to_length(1)
+        expect(obj[0]['street']).to_equal(address.street)

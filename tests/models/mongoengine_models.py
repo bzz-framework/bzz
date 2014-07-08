@@ -12,10 +12,15 @@ import slugify
 import mongoengine
 
 
+class Address(mongoengine.Document):
+    street = mongoengine.StringField(required=True)
+
+
 class User(mongoengine.Document):
     name = mongoengine.StringField(required=True)
     email = mongoengine.StringField(required=True)
     slug = mongoengine.StringField(required=False)
+    addresses = mongoengine.ListField(mongoengine.ReferenceField(Address), required=False)
 
     def save(self, *args, **kw):
         self.slug = slugify.slugify(self.name, to_lower=True)
