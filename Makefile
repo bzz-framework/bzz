@@ -26,6 +26,9 @@ unit:
 	@coverage run --branch `which nosetests` -vv --with-yanc -s tests/
 	@coverage report -m --fail-under=80
 
+focus:
+	@coverage run --branch `which nosetests` -vv --with-yanc --with-focus -s tests/
+
 doctest:
 	@cd docs && make doctest
 

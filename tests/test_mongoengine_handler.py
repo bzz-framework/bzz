@@ -90,6 +90,8 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expected_url = '/user/%s/' % response.headers['X-Created-Id']
         expect(response.headers['location']).to_equal(expected_url)
 
+    from nose_focus import focus
+    @focus
     @testing.gen_test
     def test_can_get_user(self):
         user = fix.UserFactory.create()

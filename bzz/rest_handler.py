@@ -70,10 +70,16 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
     @gen.coroutine
     def get(self, *args, **kwargs):
-        obj, field_name, model, pk = yield self.get_parent_model(args)
+        args = [arg for arg in args if arg]
+        if '/' in args[-1]:
+            yield self.handle_get_one(args)
+        else:
+            yield self.handle_get_list(args)
 
-        if pk is None:
-            yield self.list()
+    @gen.coroutine
+    def handle_get_one(self, args):
+        success, obj = yield self.get_instance_from_args(args)
+        if not success:
             return
 
         if obj is None:
@@ -82,6 +88,53 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
         self.write_json(self.dump_object(obj))
         self.finish()
+
+    @gen.coroutine
+    def handle_get_list(self, args):
+        if '/' not in args[0] and len(args) > 1:
+            # /team/user -> missing user pk
+            self.send_error(status_code=400)
+            return
+
+        if len(args) == 1:
+            items = yield self.get_list()
+        else:
+            items = yield self.get_instance_from_args(args)
+
+        result = [self.dump_object(item) for item in items]
+        self.write_json(result)
+        self.finish()
+
+    @gen.coroutine
+    def get_instance_from_args(self, args):
+        model, pk = args[0].split('/')
+        obj = yield self.get_instance(pk)
+
+        if len(args) == 1:
+            raise gen.Return((True, obj))
+
+        obj = self.get_instance_property(obj, args[1:])
+
+        if obj is None:
+            self.send_error(status_code=404)
+            raise gen.Return((False, None))
+
+        raise gen.Return((True, obj))
+
+    def get_instance_property(self, obj, path):
+        parts = [part.split('/') for part in path]
+        for part in parts:
+            path = part[0]
+            pk = None
+
+            if len(part) > 1:
+                pk = part[1]
+
+            obj = getattr(obj, path)
+            if self.get_instance_id(obj) != pk:
+                return None
+
+        return obj
 
     @gen.coroutine
     def post(self, *args, **kwargs):
