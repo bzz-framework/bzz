@@ -90,8 +90,6 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expected_url = '/user/%s/' % response.headers['X-Created-Id']
         expect(response.headers['location']).to_equal(expected_url)
 
-    from nose_focus import focus
-    @focus
     @testing.gen_test
     def test_can_get_user(self):
         user = fix.UserFactory.create()
@@ -399,3 +397,22 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
 
         expect(response.code).to_equal(200)
         expect(team.users).to_length(1)
+
+    @testing.gen_test
+    def test_can_get_users_in_team(self):
+        user = models.User(name='Bernardo Heynemann', email='heynemann@gmail.com')
+        user.save()
+        team = models.Team(name="test-team", users=[user])
+        team.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/' % str(team.id)),
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).not_to_be_empty()
+
+        obj = json.loads(response.body)
+        expect(obj).to_length(1)
+        expect(obj[0]['name']).to_equal('Bernardo Heynemann')
+        expect(obj[0]['email']).to_equal('heynemann@gmail.com')

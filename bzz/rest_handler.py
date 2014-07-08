@@ -70,7 +70,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
     @gen.coroutine
     def get(self, *args, **kwargs):
-        args = [arg for arg in args if arg]
+        args = [arg.lstrip('/') for arg in args if arg]
         if '/' in args[-1]:
             yield self.handle_get_one(args)
         else:
@@ -86,7 +86,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
             self.send_error(status_code=404)
             return
 
-        self.write_json(self.dump_object(obj))
+        self.write_json(self.dump_instance(obj))
         self.finish()
 
     @gen.coroutine
@@ -99,10 +99,12 @@ class ModelRestHandler(tornado.web.RequestHandler):
         if len(args) == 1:
             items = yield self.get_list()
         else:
-            items = yield self.get_instance_from_args(args)
+            success, items = yield self.get_instance_from_args(args)
+            if not success:
+                self.send_error(status_code=400)
+                return
 
-        result = [self.dump_object(item) for item in items]
-        self.write_json(result)
+        self.write_json(self.dump_list(items))
         self.finish()
 
     @gen.coroutine
@@ -122,7 +124,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
         raise gen.Return((True, obj))
 
     def get_instance_property(self, obj, path):
-        parts = [part.split('/') for part in path]
+        parts = [part.lstrip('/').split('/') for part in path if part]
         for part in parts:
             path = part[0]
             pk = None
@@ -131,7 +133,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
                 pk = part[1]
 
             obj = getattr(obj, path)
-            if self.get_instance_id(obj) != pk:
+            if pk is not None and self.get_instance_id(obj) != pk:
                 return None
 
         return obj

@@ -112,7 +112,15 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         items = self.model.objects.all()[start:stop]
         raise gen.Return(items)
 
-    def dump_object(self, instance):
+    def dump_list(self, items):
+        dumped = []
+
+        for item in items:
+            dumped.append(self.dump_instance(item))
+
+        return dumped
+
+    def dump_instance(self, instance):
         method = getattr(instance, 'to_dict', None)
 
         if method:
