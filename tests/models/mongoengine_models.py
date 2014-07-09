@@ -61,7 +61,16 @@ class Child(mongoengine.EmbeddedDocument):
     last_name = mongoengine.StringField(required=True)
     child = mongoengine.EmbeddedDocumentField(GrandChild, required=False)
 
+    @classmethod
+    def get_id_field_name(cls):
+        return Child.first_name
+
 
 class Parent(mongoengine.Document):
     name = mongoengine.StringField(required=True)
     child = mongoengine.EmbeddedDocumentField(Child, required=False)
+
+
+class Parent2(mongoengine.Document):
+    name = mongoengine.StringField(required=True)
+    children = mongoengine.ListField(mongoengine.EmbeddedDocumentField(Child))

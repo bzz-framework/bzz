@@ -27,7 +27,8 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             else:
                 setattr(instance, key, value)
 
-        instance.save()
+        if not isinstance(instance, mongoengine.EmbeddedDocument):
+            instance.save()
 
         raise gen.Return(instance)
 
@@ -61,12 +62,14 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             self.fill_property(new_instance.__class__, new_instance, property_name, value)
 
     @gen.coroutine
-    def update_instance(self, pk, data, model=None):
+    def update_instance(self, pk, data, model=None, instance=None, parent=None):
         if model is None:
             model = self.model
 
+        if instance is None:
+            instance = yield self.get_instance(pk, model)
+
         updated_fields = {}
-        instance = yield self.get_instance(pk, model)
         for field, value in self.get_request_data().items():
             if '.' in field:
                 self.fill_property(model, instance, field, value, updated_fields)
@@ -76,7 +79,12 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
                     'to': value
                 }
                 setattr(instance, field, value)
-        instance.save()
+
+        if parent and isinstance(instance, mongoengine.EmbeddedDocument):
+            parent.save()
+        else:
+            instance.save()
+
         raise gen.Return((instance, updated_fields))
 
     @gen.coroutine
@@ -95,6 +103,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         field = self.get_id_field_name()
 
         if instance_id:
+            # if mongoengine.EmbeddedDocument in model.mro():
             instance = model.objects.filter(**{field: instance_id}).first()
 
         raise gen.Return(instance)
@@ -139,7 +148,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
     @gen.coroutine
     def get_instance_id(self, instance):
-        field = getattr(self.model, 'get_id_field_name', None)
+        field = getattr(instance.__class__, 'get_id_field_name', None)
         if field:
             raise gen.Return(str(getattr(instance, field().name)))
 
@@ -164,8 +173,20 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
     def associate_instance(self, obj, field_name, instance):
         if obj is None:
             return
-        getattr(obj, field_name).append(instance)
-        obj.save()
+
+        field = obj._fields.get(field_name)
+        if self.is_list_field(field):
+            getattr(obj, field_name).append(instance)
+        elif self.is_embedded_field(field):
+            setattr(obj, field_name, instance)
+
+        raise gen.Return(obj.save())
+
+    def is_embedded_field(self, field):
+        return isinstance(field, mongoengine.EmbeddedDocumentField)
+
+    def is_list_field(self, field):
+        return isinstance(field, mongoengine.ListField)
 
     def get_property_model(self, obj, field_name):
         property_name = field_name
@@ -175,6 +196,6 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             property_name, pk = field_name.split('/')
 
         field = obj._fields[property_name]
-        if isinstance(field, mongoengine.ListField):
-            if isinstance(field.field, mongoengine.ReferenceField):
-                return field.field.document_type
+        if self.is_list_field(field):
+            return field.field.document_type
+        return field.document_type

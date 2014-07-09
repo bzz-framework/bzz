@@ -135,7 +135,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
         if len(args) == 1:
             raise gen.Return((True, obj))
 
-        obj = yield self.get_instance_property(obj, args[1:])
+        obj, parent = yield self.get_instance_property(obj, args[1:])
 
         if obj is None:
             self.send_error(status_code=404)
@@ -146,6 +146,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def get_instance_property(self, obj, path):
         parts = [part.lstrip('/').split('/') for part in path if part]
+        parent = obj
         for part in parts:
             path = part[0]
             pk = None
@@ -153,7 +154,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
             if len(part) > 1:
                 pk = part[1]
 
-            obj = getattr(obj, path)
+            obj = getattr(parent, path)
 
             if pk is not None:
                 if isinstance(obj, (list, tuple)):
@@ -161,17 +162,19 @@ class ModelRestHandler(tornado.web.RequestHandler):
                         instance_id = yield self.get_instance_id(item)
                         if instance_id == pk:
                             obj = item
+                        if part != parts[-1]:
+                            parent = obj
+
                 else:
                     instance_id = yield self.get_instance_id(item)
                     if instance_id != pk:
                         raise gen.Return(None)
 
-        raise gen.Return(obj)
+        raise gen.Return([obj, parent])
 
     @gen.coroutine
     def post(self, *args, **kwargs):
         args = self.parse_arguments(args)
-
         instance = None
 
         if len(args) == 1:
@@ -183,9 +186,6 @@ class ModelRestHandler(tornado.web.RequestHandler):
         else:
             instance = yield self.handle_create_and_associate(args)
 
-        #obj, field_name, model, pk = yield self.get_parent_model(args)
-        #instance = yield self.save_new_instance(model, self.get_request_data())
-        #yield self.associate_instance(obj, field_name, instance)
         signals.post_create_instance.send(
             instance.__class__,
             instance=instance,
@@ -211,7 +211,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
         root = yield self.get_instance(pk)
         model_type = self.get_model_type(root, args[1:])
         instance = yield self.save_new_instance(model_type, self.get_request_data())
-        yield self.associate_instance(root, args[-1], instance)
+        instance = yield self.associate_instance(root, args[-1], instance)
         raise gen.Return(instance)
 
     def get_model_type(self, obj, args):
@@ -268,10 +268,12 @@ class ModelRestHandler(tornado.web.RequestHandler):
         path, pk = args[0].split('/')
         root = yield self.get_instance(pk)
         model_type = root.__class__
+        instance = parent = None
         if len(args) > 1:
-            model_type = self.get_model_type(root, args[1:])
+            instance, parent = yield self.get_instance_property(root, args[1:])
+            model_type = instance.__class__
             property_name, pk = args[-1].split('/')
-        instance, updated = yield self.update_instance(pk, self.get_request_data(), model_type)
+        instance, updated = yield self.update_instance(pk, self.get_request_data(), model_type, instance, parent)
         raise gen.Return([instance, updated, model_type])
 
     @gen.coroutine
@@ -288,10 +290,12 @@ class ModelRestHandler(tornado.web.RequestHandler):
         instance = None
 
         if len(args) > 1:
-            model_type = self.get_model_type(root, args[1:])
-            property_name, pk = args[-1].split('/')
-            instance = yield self.get_instance(pk, model_type)
-            instance = yield self.handle_delete_association(root, instance, property_name)
+            instance, parent = yield self.get_instance_property(root, args[1:])
+            model_type = instance.__class__
+            property_name, pk = args[-1], None
+            if '/' in property_name:
+                property_name, pk = property_name.split('/')
+            instance = yield self.handle_delete_association(parent, instance, property_name)
         else:
             instance = yield self.handle_delete_instance(pk)
 
@@ -309,15 +313,20 @@ class ModelRestHandler(tornado.web.RequestHandler):
         raise gen.Return(instance)
 
     @gen.coroutine
-    def handle_delete_association(self, root, instance, property_name):
-        property_list = getattr(root, property_name, [])
+    def handle_delete_association(self, parent, instance, property_name):
+        field = parent._fields.get(property_name)
+        if self.is_list_field(field):
+            property_list = getattr(parent, property_name, [])
 
-        try:
-            property_list.remove(instance)
-            root.save()
-        except ValueError:
-            self.send_error(400)
-            return
+            try:
+                property_list.remove(instance)
+            except ValueError:
+                self.send_error(400)
+                return
+        elif self.is_embedded_field(field):
+            setattr(parent, property_name, None)
+
+        parent.save()
 
         raise gen.Return(instance)
 

@@ -14,6 +14,7 @@ except ImportError:
     import json
 
 import mongoengine
+from nose_focus import focus
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
 import tornado.testing as testing
@@ -46,6 +47,7 @@ class TestServer(server.Server):
             bzz.ModelRestHandler.routes_for('mongoengine', models.User),
             bzz.ModelRestHandler.routes_for('mongoengine', models.OtherUser),
             bzz.ModelRestHandler.routes_for('mongoengine', models.Parent),
+            bzz.ModelRestHandler.routes_for('mongoengine', models.Parent2),
             bzz.ModelRestHandler.routes_for('mongoengine', models.Team),
         ]
         return [route for route_list in routes for route in route_list]
@@ -355,33 +357,50 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(loaded.child.child.first_name).to_equal('Polo')
         expect(loaded.child.child.last_name).to_equal('Norte')
 
-    #@testing.gen_test
-    #def test_can_save_parent_then_child(self):
-        #response = yield self.http_client.fetch(
-            #self.get_url('/parent/'),
-            #method='POST',
-            #body='name=Bernardo%20Heynemann'
-        #)
+    @testing.gen_test
+    def test_can_save_parent_then_child(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/parent/'),
+            method='POST',
+            body='name=Bernardo%20Heynemann'
+        )
 
-        #expect(response.code).to_equal(200)
-        #expect(response.body).to_equal('OK')
-        #expect(response.headers).to_include('X-Created-Id')
-        #pk = response.headers['X-Created-Id']
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+        expect(response.headers).to_include('X-Created-Id')
+        pk = response.headers['X-Created-Id']
 
-        #response = yield self.http_client.fetch(
-            #self.get_url('/parent/%s/child/' % pk),
-            #method='POST',
-            #body='first_name=Rodrigo&last_name=Lucena'
-        #)
+        response = yield self.http_client.fetch(
+            self.get_url('/parent/%s/child/' % pk),
+            method='POST',
+            body='first_name=Rodrigo&last_name=Lucena'
+        )
 
-        #expect(response.code).to_equal(200)
-        #expect(response.body).to_equal('OK')
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
 
-        #parent = models.Parent.objects.get(id=pk)
-        #expect(parent.name).to_equal('Bernardo Heynemann')
-        #expect(parent.child).not_to_be_null()
-        #expect(parent.child.first_name).to_equal('Rodrigo')
-        #expect(parent.child.last_name).to_equal('Lucena')
+        parent = models.Parent.objects.get(id=pk)
+        expect(parent.name).to_equal('Bernardo Heynemann')
+        expect(parent.child).not_to_be_null()
+        expect(parent.child.first_name).to_equal('Rodrigo')
+        expect(parent.child.last_name).to_equal('Lucena')
+
+    @testing.gen_test
+    def test_can_delete_child_in_parent(self):
+        child = models.Child(first_name='Foo', last_name='Bar')
+        parent = models.Parent(name='Parent Name')
+        parent.child = child
+        parent.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/parent/%s/child/' % (str(parent.id))),
+            method='DELETE'
+        )
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        parent.reload()
+        expect(parent.child).to_be_null()
 
     @testing.gen_test
     def test_can_save_user_team(self):
@@ -393,8 +412,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
             body='name=Bernardo%20Heynemann&email=foo@bar.com'
         )
 
-        team = models.Team.objects.get(id=team.id)
-
+        team.reload()
         expect(response.code).to_equal(200)
         expect(team.users).to_length(1)
 
@@ -474,6 +492,26 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(loaded_user.email).to_equal('rflorianobr@gmail.com')
 
     @testing.gen_test
+    def test_can_update_addresses_for_user_in_team(self):
+        address = models.Address(street='Somewhere Else')
+        address.save()
+        user = fix.UserFactory.create(addresses=[address])
+        team = models.Team.objects.create(name="test-team", users=[user])
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/%s/addresses/%s' % (str(team.id), str(user.id), str(address.id))),
+            method='PUT',
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body='street=Somewhere'
+        )
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        address.reload()
+        expect(address.street).to_equal('Somewhere')
+
+    @testing.gen_test
     def test_can_delete_user_in_team(self):
         user = fix.UserFactory.create()
         team = models.Team.objects.create(name="test-team", users=[user])
@@ -489,25 +527,115 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(user).not_to_be_null()
         expect(team.users).to_be_empty()
 
-    # @focus
+    @testing.gen_test
+    def test_can_delete_addresses_for_user_in_team(self):
+        address = models.Address(street='Somewhere Else')
+        address.save()
+        user = models.User(name='Bernardo Heynemann', email='heynemann@gmail.com', addresses=[address])
+        user.save()
+        team = models.Team(name="test-team", users=[user])
+        team.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/%s/addresses/%s' % (str(team.id), str(user.id), str(address.id))),
+            method='DELETE'
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        user.reload()
+        team.reload()
+        expect(user).not_to_be_null()
+        expect(user.addresses).to_be_empty()
+
+    @testing.gen_test
+    def test_can_save_child_in_parent2(self):
+        parent = models.Parent2.objects.create(name="test-parent")
+
+        response = yield self.http_client.fetch(
+            self.get_url('/parent2/%s/children' % str(parent.id)),
+            method='POST',
+            body='first_name=Rodrigo&last_name=Lucena',
+        )
+
+        parent.reload()
+        expect(response.code).to_equal(200)
+        expect(parent.children).to_length(1)
+
+    @testing.gen_test
+    def test_can_get_child_in_parent2(self):
+        child = models.Child(first_name='Foo', last_name='Bar')
+        parent = models.Parent2.objects.create(name="test-team", children=[child])
+        response = yield self.http_client.fetch(
+            self.get_url('/parent2/%s/children/Foo' % (parent.id)),
+        )
+        expect(response.code).to_equal(200)
+        obj = load_json(response.body)
+        expect(obj['first_name']).to_equal('Foo')
+        expect(obj['last_name']).to_equal('Bar')
+
+    @testing.gen_test
+    def test_can_get_list_of_children_in_parent2(self):
+        child = models.Child(first_name='Foo', last_name='Bar')
+        parent = models.Parent2.objects.create(name="test-team", children=[child])
+        response = yield self.http_client.fetch(
+            self.get_url('/parent2/%s/children' % (parent.id)),
+        )
+        expect(response.code).to_equal(200)
+        obj = load_json(response.body)
+        expect(obj).to_length(1)
+
+    @testing.gen_test
+    def test_can_update_child_in_parent2(self):
+        child = models.Child(first_name='Foo', last_name='Bar')
+        parent = models.Parent2.objects.create(name="test-team", children=[child])
+        response = yield self.http_client.fetch(
+            self.get_url('/parent2/%s/children/Foo' % (parent.id)),
+            method='PUT',
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body='first_name=Rafael&last_name=Floriano'
+        )
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        parent.reload()
+        expect(parent.children[0].first_name).to_equal('Rafael')
+        expect(parent.children[0].last_name).to_equal('Floriano')
+
     # @testing.gen_test
-    # def test_can_delete_addresses_for_user_in_team(self):
+    # def test_can_update_addresses_for_user_in_team(self):
     #     address = models.Address(street='Somewhere Else')
     #     address.save()
-    #     user = models.User(name='Bernardo Heynemann', email='heynemann@gmail.com', addresses=[address])
-    #     user.save()
-    #     team = models.Team(name="test-team", users=[user])
-    #     team.save()
-
+    #     user = fix.UserFactory.create(addresses=[address])
+    #     team = models.Team.objects.create(name="test-team", users=[user])
     #     response = yield self.http_client.fetch(
     #         self.get_url('/team/%s/users/%s/addresses/%s' % (str(team.id), str(user.id), str(address.id))),
-    #         method='DELETE'
+    #         method='PUT',
+    #         headers={
+    #             "Content-Type": "application/x-www-form-urlencoded"
+    #         },
+    #         body='street=Somewhere'
     #     )
-
     #     expect(response.code).to_equal(200)
     #     expect(response.body).to_equal('OK')
 
-    #     user.reload()
-    #     team.reload()
-    #     expect(user).not_to_be_null()
-    #     expect(team.users).to_be_empty()
+    #     address.reload()
+    #     expect(address.street).to_equal('Somewhere')
+
+    @testing.gen_test
+    def test_can_delete_user_in_team(self):
+        child = models.Child(first_name='Foo', last_name='Bar')
+        parent = models.Parent2.objects.create(name="test-team", children=[child])
+        response = yield self.http_client.fetch(
+            self.get_url('/parent2/%s/children/Foo' % (parent.id)),
+            method='DELETE'
+        )
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        parent.reload()
+        expect(parent).not_to_be_null()
+        expect(parent.children).to_be_empty()
