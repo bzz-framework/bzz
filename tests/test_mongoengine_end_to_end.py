@@ -46,6 +46,10 @@ class User(me.Document):
     age = me.IntField()
     created_at = me.DateTimeField(default=datetime.now)
 
+    @classmethod
+    def get_id_field_name(self):
+        return User.name
+
 
 class Team(me.Document):
     name = me.StringField()
@@ -53,13 +57,23 @@ class Team(me.Document):
     members = me.ListField(me.ReferenceField("User"))
     projects = me.ListField(me.EmbeddedDocumentField("Project"))
 
+    @classmethod
+    def get_id_field_name(self):
+        return Team.name
+
 
 class Project(NamedEmbeddedDocument):
     module = me.EmbeddedDocumentField("Module")
 
+    @classmethod
+    def get_id_field_name(self):
+        return Project.name
+
 
 class Module(NamedEmbeddedDocument):
-    pass
+    @classmethod
+    def get_id_field_name(self):
+        return Module.name
 
 
 class TestServer(server.Server):
@@ -82,6 +96,8 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         signals.post_create_instance.receivers = {}
         signals.post_update_instance.receivers = {}
         signals.post_delete_instance.receivers = {}
+        User.objects.delete()
+        Team.objects.delete()
 
     def get_config(self):
         return dict(
