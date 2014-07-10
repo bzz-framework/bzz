@@ -23,11 +23,14 @@ setup:
 test: mongo_test unit doctest
 
 unit:
-	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING -s tests/
+	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING --processes=4 -s tests/
 	@coverage report -m --fail-under=70
 
 focus:
-	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING --with-focus -s tests/
+	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING --with-focus --processes=4 -s tests/
+
+failed:
+	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING --failed -s tests/
 
 doctest:
 	@cd docs && make doctest
@@ -35,7 +38,6 @@ doctest:
 # show coverage in html format
 coverage-html: unit
 	@coverage html -d cover
-
 
 # get a mongodb instance up (localhost:3333)
 mongo: kill_mongo
