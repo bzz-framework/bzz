@@ -54,3 +54,4 @@ docs/_build/
 cover/
 .ipynb_checkpoints/
 *.ipynb
+.noseids
