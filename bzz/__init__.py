@@ -8,5 +8,11 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
+import sys
+
 from bzz.version import __version__
-from bzz.rest_handler import ModelRestHandler
+try:
+    from bzz.rest_handler import ModelRestHandler
+except ImportError:
+    err = sys.exc_info()[1]
+    print("%s. Probably setup.py" % err)
