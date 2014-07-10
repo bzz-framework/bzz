@@ -74,7 +74,7 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    # * POST with user-id - Creates new instance
    # * PUT with user-id - Updates instance
    # * DELETE with user-id - Removes instance
-   routes = MongoEngineRestHandler.routes_for(User)
+   routes = MongoEngineRestHandler.routes_for('mongoengine', User)
 
    # Make sure our test is clean
    User.objects.delete()

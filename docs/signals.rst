@@ -52,7 +52,7 @@ bzz uses the blinker library for signals. Using them is very simple:
    post_create_instance.connect(handle_post_instance_created)
 
    # get routes for our model
-   routes = MongoEngineRestHandler.routes_for(User)
+   routes = MongoEngineRestHandler.routes_for('mongoengine', User)
 
    # Make sure our test is clean
    User.objects.delete()

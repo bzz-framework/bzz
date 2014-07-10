@@ -67,7 +67,7 @@ Let's create a new server to save users:
 
    # bzz includes a helper to return the routes for your models
    # returns a list of routes that match '/user/<user-id>/' and allows for:
-   routes = MongoEngineRestHandler.routes_for(User)
+   routes = MongoEngineRestHandler.routes_for('mongoengine', User)
 
    User.objects.delete()
    application = tornado.web.Application(routes)
