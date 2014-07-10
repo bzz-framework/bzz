@@ -9,6 +9,7 @@
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
 import re
+from six.moves import reduce
 
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
