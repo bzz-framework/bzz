@@ -24,7 +24,7 @@ test: mongo_test unit doctest
 
 unit:
 	@coverage run --branch `which nosetests` -vv --with-yanc -s tests/
-	@coverage report -m --fail-under=80
+	@coverage report -m --fail-under=70
 
 focus:
 	@coverage run --branch `which nosetests` -vv --with-yanc --with-focus -s tests/

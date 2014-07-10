@@ -8,11 +8,6 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
-try:
-    import ujson as json
-except ImportError:
-    import json
-
 from datetime import datetime
 import types
 
@@ -24,14 +19,15 @@ import derpconf.config as config
 
 import bzz
 import bzz.signals as signals
+import bzz.utils as utils
 import tests.base as base
 
 
 def load_json(json_string):
     try:
-        return json.loads(json_string)
+        return utils.loads(json_string)
     except ValueError:
-        return json.loads(json_string.decode('utf-8'))
+        return utils.loads(json_string.decode('utf-8'))
 
 
 class NamedEmbeddedDocument(me.EmbeddedDocument):
@@ -167,7 +163,9 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
             self.validate_request(url_arguments)
         print("")
 
-    def validate_request(self, (method, url, options, expected_status_code, transform_body, expected_body)):
+    def validate_request(self, url_arguments):
+        method, url, options, expected_status_code, transform_body, expected_body = url_arguments
+
         self.http_client.fetch(
             self.get_url(url),
             method=method,

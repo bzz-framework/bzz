@@ -8,13 +8,7 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
-try:
-    import ujson as json
-except ImportError:
-    import json
-
 import mongoengine
-from nose_focus import focus
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
 import tornado.testing as testing
@@ -24,6 +18,7 @@ import bson.objectid as oid
 
 import bzz
 import bzz.signals as signals
+import bzz.utils as utils
 import tests.base as base
 import tests.models.mongoengine_models as models
 import tests.fixtures as fix
@@ -31,9 +26,9 @@ import tests.fixtures as fix
 
 def load_json(json_string):
     try:
-        return json.loads(json_string)
+        return utils.loads(json_string)
     except ValueError:
-        return json.loads(json_string.decode('utf-8'))
+        return utils.loads(json_string.decode('utf-8'))
 
 
 class TestServer(server.Server):
@@ -444,7 +439,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(response.code).to_equal(200)
         expect(response.body).not_to_be_empty()
 
-        obj = json.loads(response.body)
+        obj = utils.loads(response.body)
         expect(obj).to_length(2)
         expect(obj[0]['name']).to_equal('Bernardo Heynemann')
         expect(obj[0]['email']).to_equal('heynemann@gmail.com')
@@ -467,7 +462,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(response.code).to_equal(200)
         expect(response.body).not_to_be_empty()
 
-        obj = json.loads(response.body)
+        obj = utils.loads(response.body)
         expect(obj).to_length(1)
         expect(obj[0]['street']).to_equal(address.street)
 

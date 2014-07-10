@@ -12,11 +12,6 @@ import tornado.web
 import tornado.gen as gen
 from six.moves.urllib.parse import unquote
 
-try:
-    import ujson as json
-except ImportError:
-    import json
-
 import bzz.signals as signals
 import bzz.utils as utils
 
@@ -67,7 +62,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
     def write_json(self, obj):
         self.set_header("Content-Type", "application/json")
-        self.write(json.dumps(obj))
+        self.write(utils.dumps(obj))
 
     def parse_arguments(self, args):
         args = [arg.lstrip('/') for arg in args if arg]
@@ -356,4 +351,4 @@ class ModelRestHandler(tornado.web.RequestHandler):
         return data
 
     def dump_object(self, instance):
-        return json.dumps(instance)
+        return utils.dumps(instance)
