@@ -14,6 +14,7 @@ except ImportError:
     import json
 
 from datetime import datetime
+import types
 
 import mongoengine as me
 import cow.server as server
@@ -115,10 +116,30 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         self.server = TestServer(config=cfg)
         return self.server
 
+    def __assert_user_data(self, created_at=None, age=None, id_=None, name=None):
+        def handle(obj):
+            if isinstance(obj, (list, tuple)):
+                obj = obj[0]
+
+            if created_at is not None:
+                expect(obj['created_at']).to_be_like(created_at)
+
+            if age is not None:
+                expect(obj['age']).to_equal(age)
+
+            if id_ is not None:
+                expect(obj['id']).to_be_like(id_)
+
+            if name is not None:
+                expect(obj['name']).to_equal(name)
+
+        return handle
+
     def __get_test_data(self):
         return [
             ('GET', '/user', dict(), 200, lambda body: load_json(body), []),
             ('POST', '/user', dict(body="name=Test%20User&age=32"), 200, None, 'OK'),
+            ('GET', '/user', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="Test User", age=32)),
         ]
 
     def test_end_to_end_flow(self):
@@ -147,4 +168,8 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         body = response.body
         if transform_body is not None:
             body = transform_body(response.body)
-        expect(body).to_be_like(expected_body)
+
+        if isinstance(expected_body, types.FunctionType):
+            expected_body(body)
+        else:
+            expect(body).to_be_like(expected_body)
