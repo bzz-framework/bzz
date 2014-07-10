@@ -111,6 +111,9 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
     @gen.coroutine
     def get_list(self, items=None, per_page=20):
         pages = int(math.ceil(self.model.objects.count() / float(per_page)))
+        if pages == 0:
+            raise gen.Return([])
+
         try:
             page = int(self.get_argument('page', 1))
         except ValueError:

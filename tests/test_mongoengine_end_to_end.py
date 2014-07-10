@@ -13,6 +13,8 @@ try:
 except ImportError:
     import json
 
+from datetime import datetime
+
 import mongoengine as me
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
@@ -42,7 +44,7 @@ class User(me.Document):
 
     name = me.StringField()
     age = me.IntField()
-    created_at = me.DateTimeField()
+    created_at = me.DateTimeField(default=datetime.now)
 
 
 class Team(me.Document):
@@ -100,6 +102,7 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
     def __get_test_data(self):
         return [
             ('GET', '/user', dict(), 200, lambda body: load_json(body), []),
+            ('POST', '/user', dict(body="name=Test%20User&age=32"), 200, None, 'OK'),
         ]
 
     def test_end_to_end_flow(self):
@@ -125,5 +128,7 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         expect(response.code).to_equal(expected_status_code)
         print("%s %s - %s" % (method, url, response.code))
 
-        body = transform_body(response.body)
+        body = response.body
+        if transform_body is not None:
+            body = transform_body(response.body)
         expect(body).to_be_like(expected_body)
