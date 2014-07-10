@@ -12,6 +12,7 @@ import math
 
 import tornado.gen as gen
 import mongoengine
+import bson
 
 import bzz.rest_handler as bzz
 
@@ -145,8 +146,14 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             return method()
 
         data = {}
-        for field in instance._fields.keys():
-            data[field] = str(getattr(instance, field, None))
+        for field_name in instance._fields.keys():
+            field = getattr(instance.__class__, field_name)
+            value = field.to_mongo(getattr(instance, field_name, None))
+
+            if isinstance(value, bson.ObjectId):
+                value = str(value)
+
+            data[field_name] = value
         return data
 
     @gen.coroutine
