@@ -171,13 +171,18 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
         return 'id'
 
-    @gen.coroutine
-    def get_model(self, obj, field_name):
-        if obj is None:
-            raise gen.Return(self.model)
+    def get_document_type(self, field):
+        if self.is_list_field(field):
+            field = field.field
+        return field.document_type
 
-        field = getattr(obj.__class__, field_name)
-        raise gen.Return(field.field.document_type)
+    def get_model(self, field):
+        # if obj is None:
+        #     raise gen.Return(self.model)
+
+        # field = getattr(obj.__class__, field_name)
+        # raise gen.Return(field.field.document_type)
+        return self.get_document_type(field)
 
     @gen.coroutine
     def associate_instance(self, obj, field_name, instance):
@@ -187,7 +192,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         field = obj._fields.get(field_name)
         if self.is_list_field(field):
             getattr(obj, field_name).append(instance)
-        elif self.is_embedded_field(field):
+        else:
             setattr(obj, field_name, instance)
 
         raise gen.Return(obj.save())
@@ -206,6 +211,22 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             property_name, pk = field_name.split('/')
 
         field = obj._fields[property_name]
-        if self.is_list_field(field):
-            return field.field.document_type
-        return field.document_type
+        return self.get_document_type(field)
+
+    @gen.coroutine
+    def is_multiple(self, path):
+        parts = [part.lstrip('/').split('/') for part in path if part]
+        to_return = False
+        model = self.model
+
+        if len(parts) == 1 and len(parts[0]) == 1:
+            raise gen.Return(True)
+
+        for part in parts[1:]:
+            to_return = False
+            path = part[0]
+            field = getattr(model, path)
+            to_return = self.is_list_field(field)
+            model = self.get_model(field)
+
+        raise gen.Return(to_return)

@@ -86,10 +86,12 @@ class ModelRestHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def get(self, *args, **kwargs):
         args = self.parse_arguments(args)
-        if '/' in args[-1]:
-            yield self.handle_get_one(args)
-        else:
+        is_multiple = yield self.is_multiple(args)
+
+        if is_multiple and '/' not in args[-1]:
             yield self.handle_get_list(args)
+        else:
+            yield self.handle_get_one(args)
 
     @gen.coroutine
     def handle_get_one(self, args):
@@ -159,11 +161,6 @@ class ModelRestHandler(tornado.web.RequestHandler):
                             obj = item
                         if part != parts[-1]:
                             parent = obj
-
-                else:
-                    instance_id = yield self.get_instance_id(item)
-                    if instance_id != pk:
-                        raise gen.Return(None)
 
         raise gen.Return([obj, parent])
 
@@ -241,7 +238,10 @@ class ModelRestHandler(tornado.web.RequestHandler):
                 obj = getattr(obj, field_name)
 
         if model is None:
-            model = yield self.get_model(obj, field_name)
+            model = self.model
+            if obj:
+                field = getattr(obj.__class__, field_name)
+                model = self.get_model(field)
 
         raise gen.Return([obj, field_name, model, id_])
 
@@ -318,7 +318,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
             except ValueError:
                 self.send_error(400)
                 return
-        elif self.is_embedded_field(field):
+        else:
             setattr(parent, property_name, None)
 
         parent.save()

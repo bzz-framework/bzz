@@ -74,3 +74,12 @@ class Parent(mongoengine.Document):
 class Parent2(mongoengine.Document):
     name = mongoengine.StringField(required=True)
     children = mongoengine.ListField(mongoengine.EmbeddedDocumentField(Child))
+
+
+class Person(mongoengine.Document):
+    name = mongoengine.StringField(required=True)
+
+
+class Student(mongoengine.Document):
+    code = mongoengine.StringField(required=True)
+    person = mongoengine.ReferenceField(Person)

@@ -9,6 +9,7 @@
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
 import mongoengine
+from nose_focus import focus
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
 import tornado.testing as testing
@@ -44,6 +45,7 @@ class TestServer(server.Server):
             bzz.ModelRestHandler.routes_for('mongoengine', models.Parent),
             bzz.ModelRestHandler.routes_for('mongoengine', models.Parent2),
             bzz.ModelRestHandler.routes_for('mongoengine', models.Team),
+            bzz.ModelRestHandler.routes_for('mongoengine', models.Student),
         ]
         return [route for route_list in routes for route in route_list]
 
@@ -87,6 +89,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expected_url = '/user/%s/' % response.headers['X-Created-Id']
         expect(response.headers['location']).to_equal(expected_url)
 
+    @focus
     @testing.gen_test
     def test_can_get_user(self):
         user = fix.UserFactory.create()
@@ -600,28 +603,8 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(parent.children[0].first_name).to_equal('Rafael')
         expect(parent.children[0].last_name).to_equal('Floriano')
 
-    # @testing.gen_test
-    # def test_can_update_addresses_for_user_in_team(self):
-    #     address = models.Address(street='Somewhere Else')
-    #     address.save()
-    #     user = fix.UserFactory.create(addresses=[address])
-    #     team = models.Team.objects.create(name="test-team", users=[user])
-    #     response = yield self.http_client.fetch(
-    #         self.get_url('/team/%s/users/%s/addresses/%s' % (str(team.id), str(user.id), str(address.id))),
-    #         method='PUT',
-    #         headers={
-    #             "Content-Type": "application/x-www-form-urlencoded"
-    #         },
-    #         body='street=Somewhere'
-    #     )
-    #     expect(response.code).to_equal(200)
-    #     expect(response.body).to_equal('OK')
-
-    #     address.reload()
-    #     expect(address.street).to_equal('Somewhere')
-
     @testing.gen_test
-    def test_can_delete_user_in_team(self):
+    def test_can_delete_chold_of_user_in_team(self):
         child = models.Child(first_name='Foo', last_name='Bar')
         parent = models.Parent2.objects.create(name="test-team", children=[child])
         response = yield self.http_client.fetch(
@@ -634,3 +617,72 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         parent.reload()
         expect(parent).not_to_be_null()
         expect(parent.children).to_be_empty()
+
+    @testing.gen_test
+    def test_can_save_student_and_person(self):
+        student = models.Student.objects.create(code="foo")
+
+        response = yield self.http_client.fetch(
+            self.get_url('/student/%s/person/' % str(student.id)),
+            method='POST',
+            body='name=Bernardo'
+        )
+
+        student.reload()
+        expect(response.code).to_equal(200)
+        expect(student.person.name).to_equal('Bernardo')
+
+    @testing.gen_test
+    def test_can_get_person_in_student(self):
+        person = models.Person.objects.create(name="test-student")
+        student = models.Student.objects.create(code="foo", person=person)
+        response = yield self.http_client.fetch(
+            self.get_url('/student/%s/person/%s' % (student.id, person.id)),
+        )
+        expect(response.code).to_equal(200)
+        obj = load_json(response.body)
+        expect(obj['name']).to_equal(person.name)
+
+        response = yield self.http_client.fetch(
+            self.get_url('/student/%s/person' % (student.id)),
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).not_to_be_empty()
+
+        obj = load_json(response.body)
+        expect(obj['name']).to_equal(person.name)
+
+    @testing.gen_test
+    def test_can_update_person_in_student(self):
+        person = models.Person.objects.create(name="test-student")
+        student = models.Student.objects.create(code="foo", person=person)
+        response = yield self.http_client.fetch(
+            self.get_url('/student/%s/person/%s' % (student.id, person.id)),
+            method='PUT',
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body='name=Rafael'
+        )
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        person.reload()
+        expect(person.name).to_equal('Rafael')
+
+    @testing.gen_test
+    def test_can_delete_person_in_student(self):
+        person = models.Person.objects.create(name="test-student")
+        student = models.Student.objects.create(code="foo", person=person)
+        response = yield self.http_client.fetch(
+            self.get_url('/student/%s/person/%s' % (student.id, person.id)),
+            method='DELETE'
+        )
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('OK')
+
+        person.reload()
+        student.reload()
+        expect(person).not_to_be_null()
+        expect(student.person).to_be_null()
