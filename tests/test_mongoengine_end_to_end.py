@@ -135,11 +135,24 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
 
         return handle
 
+    def __assert_len(self, expected_length):
+        def handle(obj):
+            expect(obj).not_to_be_null()
+            expect(obj).to_be_instance_of(list)
+            expect(obj).to_length(expected_length)
+        return handle
+
     def __get_test_data(self):
         return [
             ('GET', '/user', dict(), 200, lambda body: load_json(body), []),
-            ('POST', '/user', dict(body="name=Test%20User&age=32"), 200, None, 'OK'),
-            ('GET', '/user', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="Test User", age=32)),
+            ('POST', '/user', dict(body="name=test%20user&age=32"), 200, None, 'OK'),
+            ('GET', '/user', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test user", age=32)),
+            ('GET', '/user/test%20user', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test user", age=32)),
+            ('PUT', '/user/test%20user', dict(body="age=31"), 200, None, 'OK'),
+            ('GET', '/user/test%20user', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test user", age=31)),
+            ('POST', '/user', dict(body="name=test-user2&age=32"), 200, None, 'OK'),
+            ('DELETE', '/user/test-user2', dict(), 200, None, 'OK'),
+            ('GET', '/user', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
         ]
 
     def test_end_to_end_flow(self):
