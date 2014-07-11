@@ -42,6 +42,7 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
             ('PUT', '/team/team-1', dict(body="owner=test-user3"), 200, None, 'OK'),
             ('POST', '/team', dict(body="name=team-2&owner=test%20user"), 200, None, 'OK'),
             ('DELETE', '/team/team-2', dict(), 200, None, 'OK'),
+            ('GET', '/team', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
         ]
 
     def setUp(self):
@@ -94,13 +95,12 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
 
             if owner is not None:
                 expect(obj['owner']).not_to_be_null()
-                expect(obj['owner'].name).to_equal(owner)
+                expect(obj['owner']['name']).to_equal(owner)
 
             if name is not None:
                 expect(obj['name']).to_equal(name)
 
         return handle
-
 
     def __assert_len(self, expected_length):
         def handle(obj):
@@ -152,7 +152,7 @@ def load_json(json_string):
 
 
 class NamedEmbeddedDocument(me.EmbeddedDocument):
-    meta = { 'allow_inheritance': True }
+    meta = {'allow_inheritance': True}
 
     name = me.StringField()
 
@@ -206,6 +206,3 @@ class TestServer(server.Server):
             bzz.ModelRestHandler.routes_for('mongoengine', Team),
         ]
         return [route for route_list in routes for route in route_list]
-
-
-

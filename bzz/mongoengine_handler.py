@@ -26,6 +26,9 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             if '.' in key:
                 self.fill_property(self.model, instance, key, value)
             else:
+                field = instance._fields.get(key)
+                if self.is_reference_field(field):
+                    value = yield self.get_instance(value, self.get_model(field))
                 setattr(instance, key, value)
 
         if not isinstance(instance, mongoengine.EmbeddedDocument):
@@ -71,15 +74,18 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             instance = yield self.get_instance(pk, model)
 
         updated_fields = {}
-        for field, value in self.get_request_data().items():
-            if '.' in field:
-                self.fill_property(model, instance, field, value, updated_fields)
+        for field_name, value in self.get_request_data().items():
+            if '.' in field_name:
+                self.fill_property(model, instance, field_name, value, updated_fields)
             else:
-                updated_fields[field] = {
-                    'from': getattr(instance, field),
+                field = instance._fields.get(field_name)
+                if self.is_reference_field(field):
+                    value = yield self.get_instance(value, self.get_model(field))
+                updated_fields[field_name] = {
+                    'from': getattr(instance, field_name),
                     'to': value
                 }
-                setattr(instance, field, value)
+                setattr(instance, field_name, value)
 
         if parent and isinstance(instance, mongoengine.EmbeddedDocument):
             parent.save()
@@ -140,6 +146,9 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         return dumped
 
     def dump_instance(self, instance):
+        if instance is None:
+            return {}
+
         method = getattr(instance, 'to_dict', None)
 
         if method:
@@ -148,7 +157,18 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         data = {}
         for field_name in instance._fields.keys():
             field = getattr(instance.__class__, field_name)
-            value = field.to_mongo(getattr(instance, field_name, None))
+
+            value = getattr(instance, field_name)
+            if self.is_embedded_field(field) or self.is_reference_field(field):
+                value = self.dump_instance(value)
+            elif self.is_list_field(field) and isinstance(field.field, (mongoengine.ReferenceField, mongoengine.EmbeddedDocumentField)):
+                items = []
+                for obj in value:
+                    items.append(self.dump_instance(obj))
+
+                value = items
+            else:
+                value = field.to_mongo(value)
 
             if isinstance(value, bson.ObjectId):
                 value = str(value)
@@ -202,6 +222,9 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
     def is_list_field(self, field):
         return isinstance(field, mongoengine.ListField)
+
+    def is_reference_field(self, field):
+        return isinstance(field, mongoengine.ReferenceField)
 
     def get_property_model(self, obj, field_name):
         property_name = field_name
