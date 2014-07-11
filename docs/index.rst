@@ -33,9 +33,10 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    from tornado.httpclient import AsyncHTTPClient
    from tornado.httpserver import HTTPServer
    from mongoengine import *
-   io_loop = tornado.ioloop.IOLoop.instance()
+   io_loop = tornado.ioloop.IOLoop()
    connect("doctest", host="localhost", port=3334)
    http_client = AsyncHTTPClient(io_loop=io_loop)
+   from tornado.testing import AsyncTestCase
 
 .. testcode:: getting_started
 
@@ -80,9 +81,10 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    User.objects.delete()
 
    application = tornado.web.Application(routes)
-   server = HTTPServer(application)
+   server = HTTPServer(application, io_loop=io_loop)
    server.listen(8888)
    io_loop.add_timeout(1, create_user)
+   io_loop.start()
 
 .. toctree::
    :maxdepth: 2

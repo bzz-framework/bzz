@@ -11,7 +11,7 @@ bzz uses the blinker library for signals. Using them is very simple:
    from tornado.httpclient import AsyncHTTPClient
    from mongoengine import *
    from bzz.signals import post_create_instance
-   io_loop = tornado.ioloop.IOLoop.instance()
+   io_loop = tornado.ioloop.IOLoop()
    connect("doctest", host="localhost", port=3334)
    http_client = AsyncHTTPClient(io_loop=io_loop)
    post_create_instance.receivers = {}
@@ -59,7 +59,7 @@ bzz uses the blinker library for signals. Using them is very simple:
 
    # create the server and run it
    application = tornado.web.Application(routes)
-   server = HTTPServer(application)
+   server = HTTPServer(application, io_loop=io_loop)
    server.listen(8889)
    io_loop.add_timeout(1, create_user)
    io_loop.start()
