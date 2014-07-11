@@ -34,14 +34,18 @@ class MockedRoutesHandler(tornado.web.RequestHandler):
             self.set_status(status)
             self.finish()
 
-class MockedRoutes():
 
+class MockedRoutes(object):
     def __init__(self, routes_tuple):
         self.routes_tuple = routes_tuple
         self.routes = {}
         self.tornado_routes = []
 
+
     def handlers(self):
+        """
+        Returns a tuples list of paths, tornado ready
+        """
         for route in self.routes_tuple:
             if not route[1] in self.routes:
                 self.routes[route[1]] = {}

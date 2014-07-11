@@ -90,6 +90,7 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    :maxdepth: 2
 
    mongoengine
+   mocked
    signals
 
 Indices and tables
