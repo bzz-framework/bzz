@@ -50,8 +50,8 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         signals.post_create_instance.receivers = {}
         signals.post_update_instance.receivers = {}
         signals.post_delete_instance.receivers = {}
-        User.objects.delete()
-        Team.objects.delete()
+        EndToEndUser.objects.delete()
+        EndToEndTeam.objects.delete()
 
     def get_config(self):
         return dict(
@@ -131,6 +131,8 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         else:
             expect(body).to_be_like(expected_body)
 
+    from nose_focus import focus
+    @focus
     def test_end_to_end_flow(self):
         data = self.__get_test_data()
 
@@ -157,7 +159,7 @@ class NamedEmbeddedDocument(me.EmbeddedDocument):
     name = me.StringField()
 
 
-class User(me.Document):
+class EndToEndUser(me.Document):
     meta = {'collection': 'EndToEndUser'}
 
     name = me.StringField()
@@ -166,18 +168,20 @@ class User(me.Document):
 
     @classmethod
     def get_id_field_name(self):
-        return User.name
+        return EndToEndUser.name
 
 
-class Team(me.Document):
+class EndToEndTeam(me.Document):
+    meta = {'collection': 'EndToEndTeam'}
+
     name = me.StringField()
-    owner = me.ReferenceField("User")
-    members = me.ListField(me.ReferenceField("User"))
+    owner = me.ReferenceField("EndToEndUser")
+    members = me.ListField(me.ReferenceField("EndToEndUser"))
     projects = me.ListField(me.EmbeddedDocumentField("Project"))
 
     @classmethod
     def get_id_field_name(self):
-        return Team.name
+        return EndToEndTeam.name
 
 
 class Project(NamedEmbeddedDocument):
@@ -202,7 +206,7 @@ class TestServer(server.Server):
 
     def get_handlers(self):
         routes = [
-            bzz.ModelRestHandler.routes_for('mongoengine', User),
-            bzz.ModelRestHandler.routes_for('mongoengine', Team),
+            bzz.ModelRestHandler.routes_for('mongoengine', EndToEndUser, resource_name="user"),
+            bzz.ModelRestHandler.routes_for('mongoengine', EndToEndTeam, resource_name="team"),
         ]
         return [route for route_list in routes for route in route_list]

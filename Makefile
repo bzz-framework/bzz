@@ -23,11 +23,11 @@ setup:
 test: mongo_test unit doctest
 
 unit:
-	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING --processes=4 -s tests/
+	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING -s tests/
 	@coverage report -m --fail-under=70
 
 focus:
-	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING --with-focus --processes=4 -s tests/
+	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING --with-focus -s tests/
 
 failed:
 	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING --failed -s tests/
