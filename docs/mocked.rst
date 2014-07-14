@@ -21,6 +21,7 @@ MockedRoutes expects a list of tuples with
    from tornado.httpclient import AsyncHTTPClient
    from tornado.httpserver import HTTPServer
    from mongoengine import *
+   import six
    io_loop = tornado.ioloop.IOLoop()
    connect("doctest", host="localhost", port=3334)
    http_client = AsyncHTTPClient(io_loop=io_loop)
@@ -49,7 +50,7 @@ MockedRoutes expects a list of tuples with
       # making sure we get the right route
       try:
          assert response.code == 200, response.code
-         assert response.body == 'much api', response.body
+         assert response.body == six.b('much api'), response.body
       finally:
          server.stop()
          io_loop.stop()

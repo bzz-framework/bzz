@@ -30,7 +30,9 @@ class TestServer(server.Server):
             ('*', r'/such/.*', dict(body='such match')),
             ('GET', '/much/error', dict(body='WOW', status=404)),
             ('GET', '/much/authentication', dict(body='WOW', cookies={'super': 'cow'})),
-            ('GET', '/such/function', dict(body=lambda x: x.method)),
+            ('GET', '/much/function', dict(body=lambda x: x.method)),
+            ('GET', '/much/come/first', dict(body='FIRST')),
+            ('*', '/much/come/first', dict(body='NOT FIRTH')),
         ])
         return routes.handlers()
 
@@ -129,7 +131,15 @@ class TestMockedRoutes(base.ApiTestCase):
     @testing.gen_test
     def test_body_can_be_a_function(self):
         response = yield self.http_client.fetch(
-            self.get_url('/such/function')
+            self.get_url('/much/function')
         )
         expect(response.code).to_equal(200)
         expect(response.body).to_equal('GET')
+
+    @testing.gen_test
+    def test_should_respect_definition_order(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/much/come/first')
+        )
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('FIRST')

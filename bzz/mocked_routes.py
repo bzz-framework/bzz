@@ -9,6 +9,7 @@
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
 import tornado.web
+from collections import OrderedDict
 
 
 class MockedRoutesHandler(tornado.web.RequestHandler):
@@ -41,14 +42,15 @@ class MockedRoutesHandler(tornado.web.RequestHandler):
 class MockedRoutes(object):
     def __init__(self, routes_tuple):
         self.routes_tuple = routes_tuple
-        self.routes = {}
-        self.tornado_routes = []
+        self.routes = OrderedDict()
+        # self.tornado_routes = []
 
 
     def handlers(self):
         """
         Returns a tuples list of paths, tornado ready
         """
+        tornado_routes = []
         for route in self.routes_tuple:
             if not route[1] in self.routes:
                 self.routes[route[1]] = {}
@@ -61,7 +63,6 @@ class MockedRoutes(object):
 
             self.routes[route[1]][route[0]] = result
 
-        for route, methods in self.routes.items():
-            self.tornado_routes.append((route, MockedRoutesHandler, dict(handler_methods=methods)))
-        return self.tornado_routes
+
+        return [(route, MockedRoutesHandler, dict(handler_methods=methods)) for route, methods in self.routes.items()]
 
