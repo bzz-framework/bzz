@@ -12,6 +12,7 @@ import mongoengine
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
 import tornado.testing as testing
+from tornado.httpclient import HTTPError
 from preggy import expect
 import derpconf.config as config
 import bson.objectid as oid
@@ -471,44 +472,24 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(obj[0]['street']).to_equal(address.street)
 
     @testing.gen_test
-    def test_can_update_user_in_team(self):
-        user = fix.UserFactory.create()
-        team = models.Team.objects.create(name="test-team", users=[user])
-        response = yield self.http_client.fetch(
-            self.get_url('/team/%s/users/%s' % (team.id, user.id)),
-            method='PUT',
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body='name=Rafael%20Floriano&email=rflorianobr@gmail.com'
-        )
-        expect(response.code).to_equal(200)
-        expect(response.body).to_equal('OK')
-
-        loaded_user = models.User.objects.get(id=user.id)
-        expect(loaded_user.name).to_equal('Rafael Floriano')
-        expect(loaded_user.slug).to_equal('rafael-floriano')
-        expect(loaded_user.email).to_equal('rflorianobr@gmail.com')
-
-    @testing.gen_test
     def test_can_update_addresses_for_user_in_team(self):
         address = models.Address(street='Somewhere Else')
         address.save()
         user = fix.UserFactory.create(addresses=[address])
         team = models.Team.objects.create(name="test-team", users=[user])
-        response = yield self.http_client.fetch(
-            self.get_url('/team/%s/users/%s/addresses/%s' % (str(team.id), str(user.id), str(address.id))),
-            method='PUT',
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body='street=Somewhere'
-        )
-        expect(response.code).to_equal(200)
-        expect(response.body).to_equal('OK')
 
-        address.reload()
-        expect(address.street).to_equal('Somewhere')
+        # can't update reference field
+        err = expect.error_to_happen(HTTPError)
+        with err:
+            yield self.http_client.fetch(
+                self.get_url('/team/%s/users/%s/addresses/%s' % (str(team.id), str(user.id), str(address.id))),
+                method='PUT',
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body='street=Somewhere'
+            )
+        expect(err.error.code).to_equal(400)
 
     @testing.gen_test
     def test_can_delete_user_in_team(self):

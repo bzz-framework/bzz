@@ -48,6 +48,7 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
             ('POST', '/user', dict(body="name=test-user4&age=32"), 200, None, 'OK'),
             ('POST', '/team/team-1/members', dict(body="item=test-user4"), 200, None, 'OK'),
             ('DELETE', '/team/team-1/members/test-user4', dict(), 200, None, 'OK'),
+            ('PUT', '/team/team-1/members/test-user4', dict(body=""), 400, None, '<html><title>400:badrequest</title><body>400:badrequest</body></html>'),
             ('GET', '/team/team-1/members', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
             ('GET', '/user/test-user4', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test-user4", age=32)),
         ]

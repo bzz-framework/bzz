@@ -237,6 +237,12 @@ class ModelRestHandler(tornado.web.RequestHandler):
             self.send_error(400)
             return
 
+        is_multiple = yield self.is_multiple(args)
+        is_reference = yield self.is_reference(args)
+        if is_multiple and is_reference:
+            self.send_error(400)
+            return
+
         instance, updated, model = yield self.handle_update(args)
         signals.post_update_instance.send(model, instance=instance, updated_fields=updated, handler=self)
         self.write('OK')
