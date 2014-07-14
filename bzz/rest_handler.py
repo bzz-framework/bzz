@@ -44,7 +44,6 @@ class ModelRestHandler(tornado.web.RequestHandler):
             name = utils.convert(model.__name__)
 
         details_regex = r'/(%s(?:/[^/]+)?)((?:/[^/]+)*)/?'
-        #^\/(team(?:\/.+?)?)(\/.+(?:\/.+?)?)*$
 
         if prefix:
             details_regex = ('/%s' % prefix.strip('/')) + details_regex
@@ -219,7 +218,6 @@ class ModelRestHandler(tornado.web.RequestHandler):
         request_data = self.get_request_data()
         model_type = self.get_property_model(parent, args[-1])
         instance = yield self.get_instance(request_data['item'], model=model_type)
-
         instance = yield self.associate_instance(root, args[-1], instance)
         raise gen.Return(instance)
 

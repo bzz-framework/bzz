@@ -45,6 +45,11 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
             ('GET', '/team', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
             ('POST', '/team/team-1/members', dict(body="item=test%20user"), 200, None, 'OK'),
             ('GET', '/team/team-1/members', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
+            ('POST', '/user', dict(body="name=test-user4&age=32"), 200, None, 'OK'),
+            ('POST', '/team/team-1/members', dict(body="item=test-user4"), 200, None, 'OK'),
+            ('DELETE', '/team/team-1/members/test-user4', dict(), 200, None, 'OK'),
+            ('GET', '/team/team-1/members', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
+            ('GET', '/user/test-user4', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test-user4", age=32)),
         ]
 
     def setUp(self):
