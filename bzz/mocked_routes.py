@@ -30,7 +30,7 @@ class MockedRoutesHandler(tornado.web.RequestHandler):
                 raise tornado.web.HTTPError(status, body)
 
             if 'cookies' in response:
-                for cookie, value in response['cookies'].iteritems():
+                for cookie, value in response['cookies'].items():
                     self.set_cookie(cookie, value)
 
             self.write(body)
@@ -61,7 +61,7 @@ class MockedRoutes(object):
 
             self.routes[route[1]][route[0]] = result
 
-        for route, methods in self.routes.iteritems():
+        for route, methods in self.routes.items():
             self.tornado_routes.append((route, MockedRoutesHandler, dict(handler_methods=methods)))
         return self.tornado_routes
 
