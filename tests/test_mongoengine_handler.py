@@ -9,7 +9,6 @@
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
 import mongoengine
-from nose_focus import focus
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
 import tornado.testing as testing
@@ -89,7 +88,6 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expected_url = '/user/%s/' % response.headers['X-Created-Id']
         expect(response.headers['location']).to_equal(expected_url)
 
-    @focus
     @testing.gen_test
     def test_can_get_user(self):
         user = fix.UserFactory.create()
@@ -403,16 +401,19 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
     @testing.gen_test
     def test_can_save_user_team(self):
         team = models.Team.objects.create(name="test-team")
+        user = models.User(name="Bernardo Heynemann", email="foo@bar.com")
+        user.save()
 
         response = yield self.http_client.fetch(
             self.get_url('/team/%s/users/' % str(team.id)),
             method='POST',
-            body='name=Bernardo%20Heynemann&email=foo@bar.com'
+            body='item=%s' % str(user.id)
         )
 
         team.reload()
         expect(response.code).to_equal(200)
         expect(team.users).to_length(1)
+        expect(team.users[0].id).to_equal(user.id)
 
     @testing.gen_test
     def test_can_get_user_in_team(self):
@@ -620,12 +621,13 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
 
     @testing.gen_test
     def test_can_save_student_and_person(self):
+        user = models.Person.objects.create(name="Bernardo")
         student = models.Student.objects.create(code="foo")
 
         response = yield self.http_client.fetch(
             self.get_url('/student/%s/person/' % str(student.id)),
             method='POST',
-            body='name=Bernardo'
+            body='item=%s' % user.id
         )
 
         student.reload()

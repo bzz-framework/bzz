@@ -176,7 +176,11 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
             instance = yield self.handle_create_one(args)
         else:
-            instance = yield self.handle_create_and_associate(args)
+            is_reference = yield self.is_reference(args)
+            if is_reference:
+                instance = yield self.handle_find_and_associate(args)
+            else:
+                instance = yield self.handle_create_and_associate(args)
 
         signals.post_create_instance.send(
             instance.__class__,
@@ -206,44 +210,25 @@ class ModelRestHandler(tornado.web.RequestHandler):
         instance = yield self.associate_instance(root, args[-1], instance)
         raise gen.Return(instance)
 
+    @gen.coroutine
+    def handle_find_and_associate(self, args):
+        path, pk = args[0].split('/')
+        root = yield self.get_instance(pk)
+
+        _, parent = yield self.get_instance_property(root, args[1:])
+        request_data = self.get_request_data()
+        model_type = self.get_property_model(parent, args[-1])
+        instance = yield self.get_instance(request_data['item'], model=model_type)
+
+        instance = yield self.associate_instance(root, args[-1], instance)
+        raise gen.Return(instance)
+
     def get_model_type(self, obj, args):
         for index, arg in enumerate(args[:-1]):
             property_name, pk = arg.split('/')
             obj = getattr(obj, property_name)
 
         return self.get_property_model(obj, args[-1])
-
-    @gen.coroutine
-    def get_parent_model(self, args):
-        obj = None
-        args = [arg for arg in args if arg]
-        model = None
-        id_ = None
-
-        for part in args[:-1]:
-            property_, property_id = part.split('/')
-
-            if obj is None:
-                obj = yield self.get_instance(property_id)
-            else:
-                obj = getattr(obj, property_)
-
-        field_name = args[-1].lstrip('/')
-        if '/' in field_name:
-            field_name, id_ = field_name.split('/')
-            if obj is None:
-                obj = yield self.get_instance(id_)
-                model = obj.__class__
-            else:
-                obj = getattr(obj, field_name)
-
-        if model is None:
-            model = self.model
-            if obj:
-                field = getattr(obj.__class__, field_name)
-                model = self.get_model(field)
-
-        raise gen.Return([obj, field_name, model, id_])
 
     @gen.coroutine
     def put(self, *args, **kwargs):
@@ -294,8 +279,6 @@ class ModelRestHandler(tornado.web.RequestHandler):
         else:
             instance = yield self.handle_delete_instance(pk)
 
-        # obj, field_name, model, pk = yield self.get_parent_model(args)
-        # instance = yield self.delete_instance(pk)
         if instance:
             signals.post_delete_instance.send(model_type, instance=instance, handler=self)
             self.write('OK')
@@ -340,7 +323,11 @@ class ModelRestHandler(tornado.web.RequestHandler):
         if self.request.body:
             items = self.request.body.decode('utf-8').split('&')
             for item in items:
-                key, value = item.split('=')
+                if '=' in item:
+                    key, value = item.split('=')
+                else:
+                    key, value = 'item', item
+
                 data[key] = unquote(value)
         else:
             for arg in list(self.request.arguments.keys()):

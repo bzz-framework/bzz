@@ -253,3 +253,22 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             model = self.get_model(field)
 
         raise gen.Return(to_return)
+
+    @gen.coroutine
+    def is_reference(self, path):
+        parts = [part.lstrip('/').split('/') for part in path if part]
+        to_return = False
+        model = self.model
+
+        for part in parts[1:]:
+            to_return = False
+            model_path = part[0]
+            field = getattr(model, model_path)
+
+            if self.is_list_field(field):
+                field = field.field
+
+            to_return = self.is_reference_field(field)
+            model = self.get_model(field)
+
+        raise gen.Return(to_return)
