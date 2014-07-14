@@ -23,6 +23,9 @@ class MockedRoutesHandler(tornado.web.RequestHandler):
             status = response.get('status', 200)
             body = response.get('body', '')
 
+            if hasattr(body, '__call__'):
+                body = body(self.request)
+
             if status >= 400:
                 raise tornado.web.HTTPError(status, body)
 

@@ -10,7 +10,10 @@ Using the MockedRoutes
 .. autoclass:: bzz.mocked_routes.MockedRoutes
 .. automethod:: bzz.mocked_routes.MockedRoutes.handlers
 
-Let's create a new server with a few mocked routes:
+Let's create a new server with a few mocked routes.
+MockedRoutes expects a list of tuples with
+
+[('METHOD', 'URL or regex', dict(body="string or function", status="200", cookies={'cookie': 'yum'}))]
 
 .. testsetup:: mocked_routes_example
 
@@ -37,6 +40,7 @@ Let's create a new server with a few mocked routes:
       ('*', r'/such/.*', dict(body='such match')),
       ('GET', '/much/error', dict(body='WOW', status=404)),
       ('GET', '/much/authentication', dict(body='WOW', cookies={'super': 'cow'})),
+      ('GET', '/such/function', dict(body=lambda x: x.method)),
    ])
 
    handlers = mocked_routes.handlers()
