@@ -24,7 +24,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
         for key, value in data.items():
             if '.' in key:
-                self.fill_property(self.model, instance, key, value)
+                self.fill_property(model, instance, key, value)
             else:
                 field = instance._fields.get(key)
                 if self.is_reference_field(field):
