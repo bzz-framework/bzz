@@ -415,6 +415,29 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(instances).to_include(user.slug)
 
     @testing.gen_test
+    def test_can_subscribe_to_post_get_instance_signal_for_internal_urls(self):
+        instances = {}
+
+        def handle_post_get_instance(sender, instance, handler):
+            instances[instance.slug] = (sender, instance)
+
+        signals.post_get_instance.connect(handle_post_get_instance)
+
+        user = models.User(name="Bernardo Heynemann", email="foo@bar.com")
+        user.save()
+        team = models.Team(name="test-team", users=[user])
+        team.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/%s' % (str(team.id), str(user.id))),
+        )
+        expect(response.code).to_equal(200)
+        expect(instances).to_length(1)
+        expect(instances).to_include(user.slug)
+        expect(instances[user.slug][0]).to_equal(models.User)
+        expect(instances[user.slug][1].id).to_equal(user.id)
+
+    @testing.gen_test
     def test_can_subscribe_to_pre_get_list_signal(self):
         lists = []
 
@@ -430,6 +453,29 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(response.code).to_equal(200)
         expect(lists).to_length(1)
         expect(lists[0][0]).to_be_like(['user'])
+
+    @testing.gen_test
+    def test_can_subscribe_to_pre_get_list_signal_for_internal_classes(self):
+        lists = []
+
+        def handle_pre_get_list(sender, arguments, handler):
+            lists.append((sender, arguments, handler))
+
+        signals.pre_get_list.connect(handle_pre_get_list)
+
+        user = models.User(name="Bernardo Heynemann", email="foo@bar.com")
+        user.save()
+        team = models.Team(name="test-team", users=[user])
+        team.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users' % str(team.id)),
+        )
+
+        expect(response.code).to_equal(200)
+        expect(lists).to_length(1)
+        expect(lists[0][0]).to_equal(models.User)
+        expect(lists[0][1]).to_be_like(['team/%s' % team.id, 'users'])
 
     @testing.gen_test
     def test_can_subscribe_to_post_get_list_signal(self):
@@ -448,6 +494,30 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(lists).to_length(1)
         expect(lists[0]).to_length(1)
         expect(lists[0][0].slug).to_equal(user.slug)
+
+    @testing.gen_test
+    def test_can_subscribe_to_post_get_list_signal_for_internal_urls(self):
+        lists = []
+
+        def handle_post_get_list(sender, items, handler):
+            lists.append((sender, items))
+
+        signals.post_get_list.connect(handle_post_get_list)
+
+        user = models.User(name="Bernardo Heynemann", email="foo@bar.com")
+        user.save()
+        team = models.Team(name="test-team", users=[user])
+        team.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users' % str(team.id)),
+        )
+
+        expect(response.code).to_equal(200)
+        expect(lists).to_length(1)
+        expect(lists[0][0]).to_equal(models.User)
+        expect(lists[0][1]).to_length(1)
+        expect(lists[0][1][0].slug).to_equal(user.slug)
 
     @testing.gen_test
     def test_can_save_parent_with_child(self):
