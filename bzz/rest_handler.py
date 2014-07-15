@@ -86,15 +86,13 @@ class ModelRestHandler(tornado.web.RequestHandler):
     def get(self, *args, **kwargs):
         args = self.parse_arguments(args)
         is_multiple = yield self.is_multiple(args)
-
-        if is_multiple:
-            signals.pre_get_list.send(self.model, arguments=args, handler=self)
-        else:
-            signals.pre_get_instance.send(self.model, arguments=args, handler=self)
+        model_type = yield self.get_model_from_path(args)
 
         if is_multiple and '/' not in args[-1]:
+            signals.pre_get_list.send(model_type, arguments=args, handler=self)
             yield self.handle_get_list(args)
         else:
+            signals.pre_get_instance.send(model_type, arguments=args, handler=self)
             yield self.handle_get_one(args)
 
     @gen.coroutine

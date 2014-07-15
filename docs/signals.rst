@@ -67,6 +67,27 @@ bzz uses the blinker library for signals. Using them is very simple:
 Available Signals
 =================
 
+pre_create_instance
+--------------------
+
+This signal is sent before a new instance is created (POST).
+
+Arguments:
+
+* sender - The model that assigned the signal
+* arguments - URL arguments that will be used to create the instance.
+* handler - The tornado handler that will be used to create the new instance of your model.
+
+Example handler::
+
+    def handle_before_instance_created(sender, handler, arguments):
+        if handler.application.config.SEND_TO_URL:
+            # sends something somewhere
+            pass
+
+        # do something else with instance
+
+
 post_create_instance
 --------------------
 
@@ -80,7 +101,7 @@ Arguments:
 
 Example handler::
 
-    def handle_post_instance_created(handler, instance):
+    def handle_post_instance_created(sender, handler, instance):
         if handler.application.config.SEND_TO_URL:
             # sends something somewhere
             pass
@@ -115,7 +136,7 @@ The `updated_fields` format is like::
 
 Example handler::
 
-    def handle_post_instance_created(handler, instance, updated_fields):
+    def handle_post_instance_created(sender, handler, instance, updated_fields):
         # do something else with instance and/or updated_fields
 
 post_delete_instance
@@ -131,6 +152,6 @@ Arguments:
 
 Example handler::
 
-    def handle_post_instance_created(handler, instance):
+    def handle_post_instance_created(sender, handler, instance):
         # do something else with instance
         # just remember the instance has already been deleted!

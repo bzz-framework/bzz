@@ -244,7 +244,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
 
         expect(response.code).to_equal(200)
         expect(instances).to_length(1)
-        expect(instances[0][0]).to_be_like([u'user'])
+        expect(instances[0][0]).to_be_like(['user'])
 
     @testing.gen_test
     def test_can_subscribe_to_post_create_signal(self):
@@ -285,7 +285,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
 
         expect(response.code).to_equal(200)
         expect(instances).to_length(1)
-        expect(instances[0][0]).to_be_like([u'user/%s' % user.id])
+        expect(instances[0][0]).to_be_like(['user/%s' % user.id])
 
     @testing.gen_test
     def test_can_subscribe_to_post_update_signal(self):
@@ -338,7 +338,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         )
         expect(response.code).to_equal(200)
         expect(instances).to_length(1)
-        expect(instances[0][0]).to_be_like([u'user/%s' % user.id])
+        expect(instances[0][0]).to_be_like(['user/%s' % user.id])
 
     @testing.gen_test
     def test_can_subscribe_to_post_delete_signal(self):
@@ -362,7 +362,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         instances = []
 
         def handle_pre_get_instance(sender, arguments, handler):
-            instances.append((arguments, handler))
+            instances.append((sender, arguments, handler))
 
         signals.pre_get_instance.connect(handle_pre_get_instance)
 
@@ -372,7 +372,31 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         )
         expect(response.code).to_equal(200)
         expect(instances).to_length(1)
-        expect(instances[0][0]).to_be_like([u'user/%s' % user.id])
+        expect(instances[0][0]).to_equal(models.User)
+        expect(instances[0][1]).to_be_like(['user/%s' % user.id])
+
+    @testing.gen_test
+    def test_can_subscribe_to_pre_get_instance_signal_for_internal_classes(self):
+        instances = []
+
+        def handle_pre_get_instance(sender, arguments, handler):
+            instances.append((sender, arguments, handler))
+
+        signals.pre_get_instance.connect(handle_pre_get_instance)
+
+        user = models.User(name="Bernardo Heynemann", email="foo@bar.com")
+        user.save()
+        team = models.Team(name="test-team", users=[user])
+        team.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/%s' % (str(team.id), str(user.id))),
+        )
+
+        expect(response.code).to_equal(200)
+        expect(instances).to_length(1)
+        expect(instances[0][0]).to_equal(models.User)
+        expect(instances[0][1]).to_be_like(['team/%s' % team.id, 'users/%s' % user.id])
 
     @testing.gen_test
     def test_can_subscribe_to_post_get_instance_signal(self):
@@ -405,7 +429,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         )
         expect(response.code).to_equal(200)
         expect(lists).to_length(1)
-        expect(lists[0][0]).to_be_like([u'user'])
+        expect(lists[0][0]).to_be_like(['user'])
 
     @testing.gen_test
     def test_can_subscribe_to_post_get_list_signal(self):

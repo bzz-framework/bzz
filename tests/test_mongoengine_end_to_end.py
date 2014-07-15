@@ -161,8 +161,6 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         else:
             expect(body).to_be_like(expected_body)
 
-    from nose_focus import focus
-    @focus
     def test_end_to_end_flow(self):
         data = self.__get_test_data()
 

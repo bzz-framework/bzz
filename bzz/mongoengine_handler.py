@@ -272,3 +272,18 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             model = self.get_model(field)
 
         raise gen.Return(to_return)
+
+    @gen.coroutine
+    def get_model_from_path(self, path):
+        parts = [part.lstrip('/').split('/') for part in path if part]
+        model = self.model
+
+        if len(parts) == 1 and len(parts[0]) == 1:
+            raise gen.Return(model)
+
+        for part in parts[1:]:
+            path = part[0]
+            field = getattr(model, path)
+            model = self.get_model(field)
+
+        raise gen.Return(model)
