@@ -180,8 +180,8 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
         signals.pre_create_instance.send(
             model_type,
+            arguments=args,
             handler=self,
-            arguments=args
         )
 
         instance = None
@@ -253,8 +253,8 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
         signals.pre_update_instance.send(
             model_type,
-            handler=self,
-            arguments=args
+            arguments=args,
+            handler=self
         )
 
         instance = None

@@ -67,10 +67,96 @@ bzz uses the blinker library for signals. Using them is very simple:
 Available Signals
 =================
 
+pre_get_instance
+----------------
+
+This signal is sent before an instance is retrieved (GET with a PK).
+
+If a list would be returned the `pre_get_list` signal should be used instead.
+
+**Please note that since this signal is sent before getting the instance, the instance is not available yet.**
+
+Arguments:
+
+* sender - The model that assigned the signal
+* arguments - URL arguments that will be used to get the instance.
+* handler - The tornado handler that will be used to get the instance of your model.
+
+Example handler::
+
+    def handle_pre_get_instance(sender, arguments, handler):
+        if handler.application.config.SEND_TO_URL:
+            # sends something somewhere
+            pass
+
+        # do something else with instance
+
+post_get_instance
+-----------------
+
+This signal is sent after an instance is retrieved (GET with a PK).
+
+If a list would be returned the `post_get_list` signal should be used instead.
+
+Arguments:
+
+* sender - The model that assigned the signal
+* instance - The instance of your model that was retrieved.
+* handler - The tornado handler that was used to get the instance of your model.
+
+Example handler::
+
+    def handle_post_get_instance(sender, instance, handler):
+        # do something with instance
+
+pre_get_list
+------------
+
+This signal is sent before a list of instances is retrieved (GET without a PK).
+
+If an instance would be returned the `pre_get_instance` signal should be used instead.
+
+**Please note that since this signal is sent before getting the list, the list is not available yet.**
+
+Arguments:
+
+* sender - The model that assigned the signal
+* arguments - URL arguments that will be used to get the instance.
+* handler - The tornado handler that will be used to get the instance of your model.
+
+Example handler::
+
+    def handle_pre_get_list(sender, arguments, handler):
+        if handler.application.config.SEND_TO_URL:
+            # sends something somewhere
+            pass
+
+        # do something else with instance
+
+post_get_list
+-------------
+
+This signal is sent after a list of instances is retrieved (GET without a PK).
+
+If an instane would be returned the `post_get_instance` signal should be used instead.
+
+Arguments:
+
+* sender - The model that assigned the signal
+* items - The list of instances of your model that was retrieved.
+* handler - The tornado handler that was used to get the instance of your model.
+
+Example handler::
+
+    def handle_post_get_list(sender, items, handler):
+        # do something with the list of items
+
 pre_create_instance
 --------------------
 
 This signal is sent before a new instance is created (POST).
+
+**Please note that since this signal is sent before creating the instance, the instance is not available yet.**
 
 Arguments:
 
@@ -80,13 +166,12 @@ Arguments:
 
 Example handler::
 
-    def handle_before_instance_created(sender, handler, arguments):
+    def handle_before_instance_created(sender, arguments, handler):
         if handler.application.config.SEND_TO_URL:
             # sends something somewhere
             pass
 
         # do something else with instance
-
 
 post_create_instance
 --------------------
@@ -101,13 +186,30 @@ Arguments:
 
 Example handler::
 
-    def handle_post_instance_created(sender, handler, instance):
+    def handle_post_instance_created(sender, instance, handler):
         if handler.application.config.SEND_TO_URL:
             # sends something somewhere
             pass
 
         # do something else with instance
 
+pre_update_instance
+-------------------
+
+This signal is sent before an instance is updated (PUT).
+
+**Please note that since this signal is sent before updating the instance, the instance is not available yet.**
+
+Arguments:
+
+* sender - The model that assigned the signal
+* arguments - URL arguments that will be used to update the instance.
+* handler - The tornado handler that will be used to update the instance of your model.
+
+Example handler::
+
+    def handle_before_instance_updated(sender, arguments, handler):
+        # do something else with instance
 
 post_update_instance
 --------------------
@@ -136,8 +238,26 @@ The `updated_fields` format is like::
 
 Example handler::
 
-    def handle_post_instance_created(sender, handler, instance, updated_fields):
+    def handle_post_instance_updated(sender, instance, updated_fields, handler):
         # do something else with instance and/or updated_fields
+
+pre_delete_instance
+-------------------
+
+This signal is sent before an instance is deleted (DELETE).
+
+**Please note that since this signal is sent before deleting the instance, the instance is not available yet.**
+
+Arguments:
+
+* sender - The model that assigned the signal
+* arguments - URL arguments that will be used to delete the instance.
+* handler - The tornado handler that will be used to delete the instance of your model.
+
+Example handler::
+
+    def handle_before_instance_deleted(sender, arguments, handler):
+        # do something with arguments
 
 post_delete_instance
 --------------------
@@ -150,8 +270,10 @@ Arguments:
 * instance - The instance that was created.
 * handler - The tornado handler that created the new instance of your model.
 
+**WARNING: The instance returned on this signal has already been removed. How each ORM handles this is peculiar to the given ORM.**
+
 Example handler::
 
-    def handle_post_instance_created(sender, handler, instance):
+    def handle_post_instance_deleted(sender, instance, handler):
         # do something else with instance
         # just remember the instance has already been deleted!
