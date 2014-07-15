@@ -290,6 +290,30 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(instances).to_include('bernardo-heynemann')
 
     @testing.gen_test
+    def test_can_subscribe_to_post_create_signal_on_internal_urls(self):
+        instances = {}
+
+        def handle_post_create(sender, instance, handler):
+            instances[instance.slug] = (sender, instance)
+
+        signals.post_create_instance.connect(handle_post_create)
+
+        user = models.User(name="Bernardo Heynemann", email="foo@bar.com")
+        user.save()
+        team = models.Team(name="test-team", users=[user])
+        team.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/' % team.id),
+            method='POST',
+            body='item=%s' % user.id
+        )
+
+        expect(response.code).to_equal(200)
+        expect(instances).to_include('bernardo-heynemann')
+        expect(instances['bernardo-heynemann'][0]).to_equal(models.User)
+
+    @testing.gen_test
     def test_can_subscribe_to_pre_update_signal(self):
         instances = []
 

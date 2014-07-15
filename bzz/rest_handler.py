@@ -224,7 +224,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
         root = yield self.get_instance(pk)
         model_type = self.get_model_type(root, args[1:])
         instance = yield self.save_new_instance(model_type, self.get_request_data())
-        instance = yield self.associate_instance(root, args[-1], instance)
+        yield self.associate_instance(root, args[-1], instance)
         raise gen.Return(instance)
 
     @gen.coroutine
@@ -236,7 +236,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
         request_data = self.get_request_data()
         model_type = self.get_property_model(parent, args[-1])
         instance = yield self.get_instance(request_data['item'], model=model_type)
-        instance = yield self.associate_instance(root, args[-1], instance)
+        yield self.associate_instance(root, args[-1], instance)
         raise gen.Return(instance)
 
     def get_model_type(self, obj, args):
@@ -249,9 +249,10 @@ class ModelRestHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def put(self, *args, **kwargs):
         args = self.parse_arguments(args)
+        model_type = yield self.get_model_from_path(args)
 
         signals.pre_update_instance.send(
-            self.model,
+            model_type,
             handler=self,
             arguments=args
         )
@@ -293,16 +294,15 @@ class ModelRestHandler(tornado.web.RequestHandler):
             self.send_error(400)
             return
 
-        signals.pre_delete_instance.send(self.model, arguments=args, handler=self)
+        model_type = yield self.get_model_from_path(args)
+        signals.pre_delete_instance.send(model_type, arguments=args, handler=self)
 
         path, pk = args[0].split('/')
         root = yield self.get_instance(pk)
-        model_type = root.__class__
         instance = None
 
         if len(args) > 1:
             instance, parent = yield self.get_instance_property(root, args[1:])
-            model_type = instance.__class__
             property_name, pk = args[-1], None
             if '/' in property_name:
                 property_name, pk = property_name.split('/')
