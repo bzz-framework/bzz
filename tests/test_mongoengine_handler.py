@@ -102,12 +102,14 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(obj['slug']).to_equal(user.slug)
 
     @testing.gen_test
-    def test_getting_invalid_user_fails_with_404(self):
+    def test_getting_invalid_user_fails_with_403(self):
         objectid = oid.ObjectId()
-        response = self.fetch(
-            '/user/%s' % objectid
-        )
-        expect(response.code).to_equal(404)
+        err = expect.error_to_happen(HTTPError)
+        with err:
+            yield self.http_client.fetch(
+                self.get_url('/user/%s' % objectid)
+            )
+        expect(err.error.code).to_equal(404)
 
     @testing.gen_test
     def test_can_create_other_user(self):
