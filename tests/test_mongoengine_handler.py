@@ -247,6 +247,31 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(instances[0][0]).to_be_like(['user'])
 
     @testing.gen_test
+    def test_can_subscribe_to_pre_create_signal_on_internal_urls(self):
+        instances = []
+
+        def handle_pre_create(sender, arguments, handler):
+            instances.append((sender, arguments, handler))
+
+        signals.pre_create_instance.connect(handle_pre_create)
+
+        user = models.User(name="Bernardo Heynemann", email="foo@bar.com")
+        user.save()
+        team = models.Team(name="test-team", users=[user])
+        team.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/team/%s/users/' % team.id),
+            method='POST',
+            body='item=%s' % user.id
+        )
+
+        expect(response.code).to_equal(200)
+        expect(instances).to_length(1)
+        expect(instances[0][0]).to_equal(models.User)
+        expect(instances[0][1]).to_be_like(['team/%s' % team.id, 'users'])
+
+    @testing.gen_test
     def test_can_subscribe_to_post_create_signal(self):
         instances = {}
 

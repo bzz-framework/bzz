@@ -176,9 +176,10 @@ class ModelRestHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def post(self, *args, **kwargs):
         args = self.parse_arguments(args)
+        model_type = yield self.get_model_from_path(args)
 
         signals.pre_create_instance.send(
-            self.model,
+            model_type,
             handler=self,
             arguments=args
         )
