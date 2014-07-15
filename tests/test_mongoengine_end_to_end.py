@@ -51,8 +51,10 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
             ('PUT', '/team/team-1/members/test-user4', dict(body=""), 400, None, '<html><title>400:badrequest</title><body>400:badrequest</body></html>'),
             ('GET', '/team/team-1/members', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
             ('GET', '/user/test-user4', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test-user4", age=32)),
-            ('POST', '/team/team-1/projects', dict(body="module.name=module-name"), 200, None, 'OK'),
+            ('POST', '/team/team-1/projects', dict(body="name=project-1&module.name=module-name"), 200, None, 'OK'),
             ('GET', '/team/team-1/projects', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
+            ('GET', '/team/team-1/projects/project-1', dict(), 200, lambda body: load_json(body), self.__assert_project_data(name="project-1", module="module-name")),
+            ('GET', '/team/team-1/projects/project-1/module', dict(), 200, lambda body: load_json(body), self.__assert_module_data(name="module-name")),
         ]
 
     def setUp(self):
@@ -78,6 +80,24 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         cfg = config.Config(**self.get_config())
         self.server = TestServer(config=cfg)
         return self.server
+
+    def __assert_project_data(self, name=None, module=None):
+        def handle(obj):
+            if name is not None:
+                expect(obj['name']).to_be_like(name)
+
+            if module is not None:
+                expect(obj['module']).not_to_be_null()
+                expect(obj['module']['name']).to_be_like(module)
+
+        return handle
+
+    def __assert_module_data(self, name=None):
+        def handle(obj):
+            if name is not None:
+                expect(obj['name']).to_be_like(name)
+
+        return handle
 
     def __assert_user_data(self, created_at=None, age=None, id_=None, name=None):
         def handle(obj):
