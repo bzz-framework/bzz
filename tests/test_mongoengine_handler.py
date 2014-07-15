@@ -53,9 +53,23 @@ class TestServer(server.Server):
 class MongoEngineRestHandlerTestCase(base.ApiTestCase):
     def setUp(self):
         super(MongoEngineRestHandlerTestCase, self).setUp()
+        signals.pre_get_instance.receivers = {}
+        signals.post_get_instance.receivers = {}
+        signals.pre_get_list.receivers = {}
+        signals.post_get_list.receivers = {}
+        signals.pre_create_instance.receivers = {}
         signals.post_create_instance.receivers = {}
+        signals.pre_update_instance.receivers = {}
         signals.post_update_instance.receivers = {}
+        signals.pre_delete_instance.receivers = {}
         signals.post_delete_instance.receivers = {}
+
+        models.User.objects.delete()
+        models.OtherUser.objects.delete()
+        models.Parent.objects.delete()
+        models.Parent2.objects.delete()
+        models.Team.objects.delete()
+        models.Student.objects.delete()
 
     def get_config(self):
         return dict(
@@ -214,7 +228,26 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(response.body).to_equal('FAIL')
 
     @testing.gen_test
-    def test_can_subscribe_to_create_signal(self):
+    def test_can_subscribe_to_pre_create_signal(self):
+        instances = []
+
+        def handle_pre_create(sender, arguments, handler):
+            instances.append((arguments, handler))
+
+        signals.pre_create_instance.connect(handle_pre_create)
+
+        response = yield self.http_client.fetch(
+            self.get_url('/user/'),
+            method='POST',
+            body='name=Bernardo%20Heynemann&email=heynemann@gmail.com'
+        )
+
+        expect(response.code).to_equal(200)
+        expect(instances).to_length(1)
+        expect(instances[0][0]).to_be_like([u'user'])
+
+    @testing.gen_test
+    def test_can_subscribe_to_post_create_signal(self):
         instances = {}
 
         def handle_post_create(sender, instance, handler):
@@ -232,7 +265,30 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(instances).to_include('bernardo-heynemann')
 
     @testing.gen_test
-    def test_can_subscribe_to_update_signal(self):
+    def test_can_subscribe_to_pre_update_signal(self):
+        instances = []
+
+        def handle_pre_update(sender, arguments, handler):
+            instances.append((arguments, handler))
+
+        signals.pre_update_instance.connect(handle_pre_update)
+
+        user = fix.UserFactory.create()
+        response = yield self.http_client.fetch(
+            self.get_url('/user/%s' % user.id),
+            method='PUT',
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body='name=Rafael%20Floriano&email=rflorianobr@gmail.com'
+        )
+
+        expect(response.code).to_equal(200)
+        expect(instances).to_length(1)
+        expect(instances[0][0]).to_be_like([u'user/%s' % user.id])
+
+    @testing.gen_test
+    def test_can_subscribe_to_post_update_signal(self):
         instances = {}
         updated = {}
 
@@ -267,13 +323,31 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         })
 
     @testing.gen_test
-    def test_can_subscribe_to_delete_signal(self):
+    def test_can_subscribe_to_pre_delete_signal(self):
+        instances = []
+
+        def handle_pre_delete(sender, arguments, handler):
+            instances.append((arguments, handler))
+
+        signals.pre_delete_instance.connect(handle_pre_delete)
+
+        user = fix.UserFactory.create()
+        response = yield self.http_client.fetch(
+            self.get_url('/user/%s' % user.id),
+            method='DELETE'
+        )
+        expect(response.code).to_equal(200)
+        expect(instances).to_length(1)
+        expect(instances[0][0]).to_be_like([u'user/%s' % user.id])
+
+    @testing.gen_test
+    def test_can_subscribe_to_post_delete_signal(self):
         instances = {}
 
-        def handle_post_create(sender, instance, handler):
+        def handle_post_delete(sender, instance, handler):
             instances[instance.slug] = instance
 
-        signals.post_delete_instance.connect(handle_post_create)
+        signals.post_delete_instance.connect(handle_post_delete)
 
         user = fix.UserFactory.create()
         response = yield self.http_client.fetch(
@@ -282,6 +356,74 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         )
         expect(response.code).to_equal(200)
         expect(instances).to_include(user.slug)
+
+    @testing.gen_test
+    def test_can_subscribe_to_pre_get_instance_signal(self):
+        instances = []
+
+        def handle_pre_get_instance(sender, arguments, handler):
+            instances.append((arguments, handler))
+
+        signals.pre_get_instance.connect(handle_pre_get_instance)
+
+        user = fix.UserFactory.create()
+        response = yield self.http_client.fetch(
+            self.get_url('/user/%s' % user.id),
+        )
+        expect(response.code).to_equal(200)
+        expect(instances).to_length(1)
+        expect(instances[0][0]).to_be_like([u'user/%s' % user.id])
+
+    @testing.gen_test
+    def test_can_subscribe_to_post_get_instance_signal(self):
+        instances = {}
+
+        def handle_post_get_instance(sender, instance, handler):
+            instances[instance.slug] = instance
+
+        signals.post_get_instance.connect(handle_post_get_instance)
+
+        user = fix.UserFactory.create()
+        response = yield self.http_client.fetch(
+            self.get_url('/user/%s' % user.id),
+        )
+        expect(response.code).to_equal(200)
+        expect(instances).to_include(user.slug)
+
+    @testing.gen_test
+    def test_can_subscribe_to_pre_get_list_signal(self):
+        lists = []
+
+        def handle_pre_get_list(sender, arguments, handler):
+            lists.append((arguments, handler))
+
+        signals.pre_get_list.connect(handle_pre_get_list)
+
+        fix.UserFactory.create()
+        response = yield self.http_client.fetch(
+            self.get_url('/user'),
+        )
+        expect(response.code).to_equal(200)
+        expect(lists).to_length(1)
+        expect(lists[0][0]).to_be_like([u'user'])
+
+    @testing.gen_test
+    def test_can_subscribe_to_post_get_list_signal(self):
+        lists = []
+
+        def handle_post_get_list(sender, items, handler):
+            lists.append(items)
+
+        signals.post_get_list.connect(handle_post_get_list)
+
+        user = fix.UserFactory.create()
+        response = yield self.http_client.fetch(
+            self.get_url('/user'),
+        )
+        expect(response.code).to_equal(200)
+        expect(lists).to_length(1)
+        expect(lists[0]).to_length(1)
+        expect(lists[0][0].slug).to_equal(user.slug)
 
     @testing.gen_test
     def test_can_save_parent_with_child(self):

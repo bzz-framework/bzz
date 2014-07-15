@@ -87,6 +87,11 @@ class ModelRestHandler(tornado.web.RequestHandler):
         args = self.parse_arguments(args)
         is_multiple = yield self.is_multiple(args)
 
+        if is_multiple:
+            signals.pre_get_list.send(self.model, arguments=args, handler=self)
+        else:
+            signals.pre_get_instance.send(self.model, arguments=args, handler=self)
+
         if is_multiple and '/' not in args[-1]:
             yield self.handle_get_list(args)
         else:
@@ -94,13 +99,15 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
     @gen.coroutine
     def handle_get_one(self, args):
-        success, obj = yield self.get_instance_from_args(args)
+        success, obj, parent = yield self.get_instance_from_args(args)
         if not success:
             return
 
         if obj is None:
             self.send_error(status_code=404)
             return
+
+        signals.post_get_instance.send(obj.__class__, instance=obj, handler=self)
 
         self.write_json(self.dump_instance(obj))
         self.finish()
@@ -114,11 +121,16 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
         if len(args) == 1:
             items = yield self.get_list()
+            model_type = self.model
         else:
-            success, items = yield self.get_instance_from_args(args)
+            success, items, parent = yield self.get_instance_from_args(args)
             if not success:
                 self.send_error(status_code=400)
                 return
+
+            model_type = self.get_property_model(parent, args[-1])
+
+        signals.post_get_list.send(model_type, items=items, handler=self)
 
         self.write_json(self.dump_list(items))
         self.finish()
@@ -129,7 +141,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
         obj = yield self.get_instance(pk)
 
         if len(args) == 1:
-            raise gen.Return((True, obj))
+            raise gen.Return((True, obj, None))
 
         obj, parent = yield self.get_instance_property(obj, args[1:])
 
@@ -137,7 +149,7 @@ class ModelRestHandler(tornado.web.RequestHandler):
             self.send_error(status_code=404)
             raise gen.Return((False, None))
 
-        raise gen.Return((True, obj))
+        raise gen.Return((True, obj, parent))
 
     @gen.coroutine
     def get_instance_property(self, obj, path):
@@ -166,6 +178,13 @@ class ModelRestHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def post(self, *args, **kwargs):
         args = self.parse_arguments(args)
+
+        signals.pre_create_instance.send(
+            self.model,
+            handler=self,
+            arguments=args
+        )
+
         instance = None
 
         if len(args) == 1:
@@ -231,6 +250,13 @@ class ModelRestHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def put(self, *args, **kwargs):
         args = self.parse_arguments(args)
+
+        signals.pre_update_instance.send(
+            self.model,
+            handler=self,
+            arguments=args
+        )
+
         instance = None
 
         if len(args) == 1 and '/' not in args[0]:
@@ -267,6 +293,8 @@ class ModelRestHandler(tornado.web.RequestHandler):
         if len(args) == 1 and '/' not in args[0]:
             self.send_error(400)
             return
+
+        signals.pre_delete_instance.send(self.model, arguments=args, handler=self)
 
         path, pk = args[0].split('/')
         root = yield self.get_instance(pk)
