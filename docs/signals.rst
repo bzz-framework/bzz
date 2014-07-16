@@ -89,8 +89,6 @@ Example handler::
             # sends something somewhere
             pass
 
-        # do something else with instance
-
 post_get_instance
 -----------------
 
@@ -131,8 +129,6 @@ Example handler::
             # sends something somewhere
             pass
 
-        # do something else with instance
-
 post_get_list
 -------------
 
@@ -171,8 +167,6 @@ Example handler::
             # sends something somewhere
             pass
 
-        # do something else with instance
-
 post_create_instance
 --------------------
 
@@ -209,7 +203,7 @@ Arguments:
 Example handler::
 
     def handle_before_instance_updated(sender, arguments, handler):
-        # do something else with instance
+         # if something is wrong, raise error
 
 post_update_instance
 --------------------
