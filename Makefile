@@ -67,3 +67,6 @@ tox:
 
 update-docs:
 	@cd docs && make html && open _build/html/index.html
+
+run-sandbox:
+	@cd tests/sandbox && python server.py
