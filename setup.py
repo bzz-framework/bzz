@@ -22,6 +22,7 @@ tests_require = [
     'factory-boy',
     'ipdb',
     'coveralls',
+    'markupsafe',
     'sphinx',
     'mongoengine',
     'awesome-slugify',
