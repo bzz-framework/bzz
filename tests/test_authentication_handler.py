@@ -17,7 +17,6 @@ from tornado.httpclient import HTTPError
 from preggy import expect
 import derpconf.config as config
 import bson.objectid as oid
-from ujson import dumps
 
 import bzz
 import bzz.signals as signals
@@ -73,7 +72,7 @@ class AuthenticationHandlerTestCase(base.ApiTestCase):
         response = yield self.http_client.fetch(
             self.get_url('/authenticate/mock/'),
             method='POST',
-            body=dumps(dict(access_token='1234567890'))
+            body=utils.dumps(dict(access_token='1234567890'))
         )
 
         expect(response.code).to_equal(200)

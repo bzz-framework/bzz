@@ -13,7 +13,6 @@ from datetime import datetime, timedelta
 import tornado.web
 import tornado.gen as gen
 from six.moves.urllib.parse import unquote
-from ujson import loads
 
 import bzz.signals as signals
 import bzz.utils as utils
@@ -45,7 +44,7 @@ class AuthenticationHandler(tornado.web.RequestHandler):
         Web Token (JWT) and set a `cookie_name` cookie with the encoded
         value. Otherwise returns a unauthorized request.
         '''
-        post_data = loads(self.request.body)
+        post_data = utils.loads(self.request.body)
         access_token = post_data.get('access_token')
 
         user = yield self.__authenticate(access_token)
