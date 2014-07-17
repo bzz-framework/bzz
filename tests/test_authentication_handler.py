@@ -8,22 +8,15 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
-import mongoengine
 import cow.server as server
-import cow.plugins.mongoengine_plugin as mongoengine_plugin
 import tornado.testing as testing
 import tornado.gen as gen
-from tornado.httpclient import HTTPError
 from preggy import expect
 import derpconf.config as config
-import bson.objectid as oid
 
 import bzz
-import bzz.signals as signals
 import bzz.utils as utils
 import tests.base as base
-import tests.models.mongoengine_models as models
-import tests.fixtures as fix
 
 
 class MockProvider(bzz.AuthenticationProvider):
