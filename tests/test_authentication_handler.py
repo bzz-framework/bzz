@@ -8,9 +8,12 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
+from datetime import datetime
+
 import cow.server as server
 import tornado.testing as testing
 import tornado.gen as gen
+from tornado.httpclient import HTTPError
 from preggy import expect
 import derpconf.config as config
 
@@ -20,7 +23,6 @@ import tests.base as base
 
 
 class MockProvider(bzz.AuthenticationProvider):
-
     @classmethod
     def get_name(cls):
         return 'mock'
@@ -28,8 +30,17 @@ class MockProvider(bzz.AuthenticationProvider):
     @classmethod
     @gen.coroutine
     def authenticate(cls, access_token):
-        return {'id': "123"}
+        raise gen.Return({'id': "123"})
 
+class MockProviderUnauthorized(bzz.AuthenticationProvider):
+    @classmethod
+    def get_name(cls):
+        return 'mock2'
+
+    @classmethod
+    @gen.coroutine
+    def authenticate(cls, access_token):
+        raise gen.Return(None)
 
 def load_json(json_string):
     try:
@@ -39,9 +50,19 @@ def load_json(json_string):
 
 
 class TestServer(server.Server):
+    @property
+    def handlers_cfg(self):
+        return {
+            'cookie_name': 'TEST_AUTH_COOKIE',
+            'secret_key': 'TEST_SECRET_KEY'
+        }
+
     def get_handlers(self):
         routes = [
-            bzz.AuthenticationHandler.routes_for(MockProvider),
+            bzz.AuthenticationHandler.routes_for(
+                MockProvider, **self.handlers_cfg),
+            bzz.AuthenticationHandler.routes_for(
+                MockProviderUnauthorized, **self.handlers_cfg),
         ]
         return [route for route_list in routes for route in route_list]
 
@@ -58,8 +79,16 @@ class AuthenticationHandlerTestCase(base.ApiTestCase):
         self.server = TestServer(config=cfg)
         return self.server
 
-    from nose_focus import focus
-    @focus
+    def mock_auth_cookie(
+            self, user_id, provider, token='12345',
+            expiration=datetime(year=5000, month=11, day=30)):
+
+        jwt = utils.Jwt(self.server.handlers_cfg['secret_key'])
+        token = jwt.encode({
+            'sub': user_id, 'iss': provider, 'token': token, 'exp': expiration
+        })
+        return '='.join((self.server.handlers_cfg['cookie_name'], token))
+
     @testing.gen_test
     def test_can_authenticate(self):
         response = yield self.http_client.fetch(
@@ -69,5 +98,40 @@ class AuthenticationHandlerTestCase(base.ApiTestCase):
         )
 
         expect(response.code).to_equal(200)
-        expect(response.body).to_equal('OK')
-        expect('AUTH_TOKEN' in response.headers.get('Set-Cookie')).to_equal(True)
+        expect(load_json(response.body)).to_equal(dict(authenticated=True))
+        expect(self.server.handlers_cfg['cookie_name'] in response.headers.get('Set-Cookie')).to_equal(True)
+
+    @testing.gen_test
+    def test_cant_authenticate(self):
+        try:
+            yield self.http_client.fetch(
+                self.get_url('/authenticate/mock2/'),
+                method='POST',
+                body=utils.dumps(dict(access_token='1234567890'))
+            )
+        except HTTPError, e:
+            expect(e.response.code).to_equal(401)
+            expect(e.response.reason).to_equal('Unauthorized')
+            expect(e.response.headers.get('Cookie')).to_equal(None)
+            expect(e.response.headers.get('Set-Cookie')).to_equal(None)
+        else:
+            assert False, 'Should not get this far'
+
+    @testing.gen_test
+    def test_can_check_authenticated_request(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/authenticate/mock/'),
+            headers={'Cookie': self.mock_auth_cookie(0, 'mock')}
+        )
+
+        expect(response.code).to_equal(200)
+        expect(load_json(response.body)).to_equal(dict(authenticated=True))
+
+    @testing.gen_test
+    def test_can_check_not_authenticated_request(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/authenticate/mock/')
+        )
+
+        expect(response.code).to_equal(200)
+        expect(load_json(response.body)).to_equal(dict(authenticated=False))

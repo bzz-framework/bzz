@@ -12,29 +12,43 @@ from datetime import datetime, timedelta
 
 import tornado.web
 import tornado.gen as gen
-from six.moves.urllib.parse import unquote
 
-import bzz.signals as signals
+# import bzz.signals as signals
 import bzz.utils as utils
 
 
 class AuthenticationHandler(tornado.web.RequestHandler):
 
     @classmethod
-    def routes_for(cls, provider, expiration=1200, cookie_name='AUTH_TOKEN'):
+    def routes_for(
+            cls, provider, expiration=1200, secret_key='SECRET_KEY',
+            cookie_name='AUTH_TOKEN'):
+
         options = dict(
-            provider=provider, expiration=expiration, cookie_name=cookie_name
+            provider=provider, expiration=expiration, secret_key=secret_key, cookie_name=cookie_name
         )
         routes = [
             ('/authenticate/%s/' % provider.get_name(), cls, options)
         ]
+
         return routes
 
-    def initialize(self, provider, expiration, cookie_name):
-        self.jwt = utils.Jwt('SECRET_KEY')
+    def initialize(self, provider, expiration, secret_key, cookie_name):
+        self.jwt = utils.Jwt(secret_key)
         self.provider = provider
         self.expiration = expiration
         self.cookie_name = cookie_name
+
+    def get(self):
+        '''
+        Only returns true or false if is a valid authenticated request
+        '''
+        self.set_status(200)
+        user = self.get_authenticated_user()
+        if user:
+            self.write(dict(authenticated=True))
+        else:
+            self.write(dict(authenticated=False))
 
     @gen.coroutine
     def post(self):
@@ -47,7 +61,7 @@ class AuthenticationHandler(tornado.web.RequestHandler):
         post_data = utils.loads(self.request.body)
         access_token = post_data.get('access_token')
 
-        user = yield self.__authenticate(access_token)
+        user = yield self._authenticate(access_token)
         if user:
             payload = dict(
                 sub=user['id'],
@@ -59,7 +73,7 @@ class AuthenticationHandler(tornado.web.RequestHandler):
             auth_token = self.jwt.encode(payload)
 
             self.set_cookie(self.cookie_name, auth_token)
-            self.write('OK')
+            self.write(dict(authenticated=True))
         else:
             self.__set_unauthorized()
 
@@ -68,9 +82,20 @@ class AuthenticationHandler(tornado.web.RequestHandler):
         self.finish()
 
     @gen.coroutine
-    def __authenticate(self, access_token):
+    def _authenticate(self, access_token):
         oauth_user = yield self.provider.authenticate(access_token)
         raise gen.Return(oauth_user)
+
+    def is_authenticated(self):
+        return self.jwt.try_to_decode(self.get_cookie(self.cookie_name))
+
+    def get_authenticated_user(self):
+        authenticated, payload = self.is_authenticated()
+        if authenticated:
+            user_id = payload['sub']
+            return {'id': user_id}
+        else:
+            return None
 
 
 class AuthenticationProvider(object):
