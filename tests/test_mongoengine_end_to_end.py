@@ -39,15 +39,15 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
             ('DELETE', '/user/test-user2', dict(), 200, None, 'OK'),
             ('GET', '/user', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
             ('GET', '/team', dict(), 200, lambda body: load_json(body), []),
-            ('POST', '/team', dict(body="name=team-1&owner=test%20user"), 200, None, 'OK'),
+            ('POST', '/team', dict(body="code=team-1&owner=test%20user"), 200, None, 'OK'),
             ('GET', '/team/team-1', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name="team-1", owner="test user")),
             ('POST', '/user', dict(body="name=test-user3&age=32"), 200, None, 'OK'),
             ('PUT', '/team/team-1', dict(body="owner=test-user3"), 200, None, 'OK'),
             ('PUT', '/team/team-1', dict(body="members[]=test-user3"), 400, None, RESPONSE_400),
             ('GET', '/team/team-1', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name='team-1', member_count=0)),
-            ('POST', '/team', dict(body="name=team-2&owner=test%20user&members[]=test%20user"), 200, None, 'OK'),
+            ('POST', '/team', dict(body="code=team-2&owner=test%20user&members[]=test%20user"), 200, None, 'OK'),
             ('GET', '/team/team-2', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name='team-2', member_count=1)),
-            ('POST', '/team', dict(body="name=team-3&owner=test%20user&members[]=test%20user&members[]=test-user3"), 200, None, 'OK'),
+            ('POST', '/team', dict(body="code=team-3&owner=test%20user&members[]=test%20user&members[]=test-user3"), 200, None, 'OK'),
             ('GET', '/team/team-3', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name='team-3', member_count=2)),
             ('DELETE', '/team/team-2', dict(), 200, None, 'OK'),
             ('DELETE', '/team/team-3', dict(), 200, None, 'OK'),
@@ -149,7 +149,7 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
                 expect(obj['owner']['name']).to_equal(owner)
 
             if name is not None:
-                expect(obj['name']).to_equal(name)
+                expect(obj['code']).to_equal(name)
 
             if member_count is not None:
                 expect(obj['members']).to_length(member_count)
@@ -216,14 +216,14 @@ class EndToEndUser(me.Document):
 class EndToEndTeam(me.Document):
     meta = {'collection': 'EndToEndTeam'}
 
-    name = me.StringField()
+    code = me.StringField()
     owner = me.ReferenceField("EndToEndUser")
     members = me.ListField(me.ReferenceField("EndToEndUser"))
     projects = me.ListField(me.EmbeddedDocumentField("Project"))
 
     @classmethod
     def get_id_field_name(self):
-        return EndToEndTeam.name
+        return EndToEndTeam.code
 
 
 class Project(NamedEmbeddedDocument):

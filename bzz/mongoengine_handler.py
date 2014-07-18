@@ -124,7 +124,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             model = self.model
 
         instance = None
-        field = self.get_id_field_name()
+        field = self.get_id_field_name(model)
 
         if instance_id:
             # if mongoengine.EmbeddedDocument in model.mro():
@@ -201,8 +201,10 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
         raise gen.Return(str(instance.id))
 
-    def get_id_field_name(self):
-        field = getattr(self.model, 'get_id_field_name', None)
+    def get_id_field_name(self, model=None):
+        if model is None:
+            model = self.model
+        field = getattr(model, 'get_id_field_name', None)
         if field:
             return field().name
 
