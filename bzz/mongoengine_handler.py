@@ -127,7 +127,6 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         field = self.get_id_field_name(model)
 
         if instance_id:
-            # if mongoengine.EmbeddedDocument in model.mro():
             instance = model.objects.filter(**{field: instance_id}).first()
 
         raise gen.Return(instance)
@@ -216,11 +215,6 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         return field.document_type
 
     def get_model(self, field):
-        # if obj is None:
-        #     raise gen.Return(self.model)
-
-        # field = getattr(obj.__class__, field_name)
-        # raise gen.Return(field.field.document_type)
         return self.get_document_type(field)
 
     @gen.coroutine

@@ -376,9 +376,10 @@ class ModelRestHandler(tornado.web.RequestHandler):
                     key, value = 'item', item
 
                 if key in data:
-                    old = data[key]
-                    data[key] = []
-                    data[key].append(old)
+                    if not isinstance(data[key], (tuple, list)):
+                        old = data[key]
+                        data[key] = []
+                        data[key].append(old)
                     data[key].append(unquote(value))
                 else:
                     data[key] = unquote(value)
