@@ -263,7 +263,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         response = yield self.http_client.fetch(
             self.get_url('/team/%s/users/' % team.id),
             method='POST',
-            body='item=%s' % user.id
+            body='users[]=%s' % user.id
         )
 
         expect(response.code).to_equal(200)
@@ -306,7 +306,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         response = yield self.http_client.fetch(
             self.get_url('/team/%s/users/' % team.id),
             method='POST',
-            body='item=%s' % user.id
+            body='users[]=%s' % user.id
         )
 
         expect(response.code).to_equal(200)
@@ -695,7 +695,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         response = yield self.http_client.fetch(
             self.get_url('/team/%s/users/' % str(team.id)),
             method='POST',
-            body='item=%s' % str(user.id)
+            body='users[]=%s' % str(user.id)
         )
 
         team.reload()
@@ -895,7 +895,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         response = yield self.http_client.fetch(
             self.get_url('/student/%s/person/' % str(student.id)),
             method='POST',
-            body='item=%s' % user.id
+            body='person[]=%s' % user.id
         )
 
         student.reload()
