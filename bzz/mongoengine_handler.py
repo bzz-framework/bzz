@@ -23,8 +23,8 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         instance = model()
 
         for key, value in data.items():
-            if '.' in key:
-                self.fill_property(model, instance, key, value)
+            if '.' in key or '[]' in key:
+                yield self.fill_property(model, instance, key, value)
             else:
                 field = instance._fields.get(key)
                 if self.is_reference_field(field):
@@ -36,9 +36,15 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
         raise gen.Return(instance)
 
+    @gen.coroutine
     def fill_property(self, model, instance, key, value, updated_fields=None):
         parts = key.split('.')
         field_name = parts[0]
+        multiple = False
+        if field_name.endswith('[]'):
+            multiple = True
+            field_name = field_name.replace('[]', '')
+
         property_name = '.'.join(parts[1:])
 
         if getattr(instance, field_name, None) is None:
@@ -60,10 +66,21 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
                     'to': str(value)
                 }
 
-            setattr(getattr(instance, field_name), property_name, value)
+            field = getattr(model, field_name, None)
+            child_model = self.get_model(field)
+            if multiple and self.is_list_field(field):
+                if not isinstance(value, (tuple, list)):
+                    value = [value]
+
+                list_property = getattr(instance, field_name)
+                for item in value:
+                    child_instance = yield self.get_instance(item, model=child_model)
+                    list_property.append(child_instance)
+            else:
+                setattr(getattr(instance, field_name), property_name, value)
         else:
             new_instance = getattr(instance, field_name)
-            self.fill_property(new_instance.__class__, new_instance, property_name, value)
+            yield self.fill_property(new_instance.__class__, new_instance, property_name, value)
 
     @gen.coroutine
     def update_instance(self, pk, data, model=None, instance=None, parent=None):
@@ -76,7 +93,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         updated_fields = {}
         for field_name, value in self.get_request_data().items():
             if '.' in field_name:
-                self.fill_property(model, instance, field_name, value, updated_fields)
+                yield self.fill_property(model, instance, field_name, value, updated_fields)
             else:
                 field = instance._fields.get(field_name)
                 if self.is_reference_field(field):

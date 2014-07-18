@@ -23,6 +23,9 @@ import bzz.utils as utils
 import tests.base as base
 
 
+RESPONSE_400 = '<html><title>400:badrequest</title><body>400:badrequest</body></html>'
+
+
 class MongoEngineEndToEndTestCase(base.ApiTestCase):
     def __get_test_data(self):
         return [
@@ -40,15 +43,21 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
             ('GET', '/team/team-1', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name="team-1", owner="test user")),
             ('POST', '/user', dict(body="name=test-user3&age=32"), 200, None, 'OK'),
             ('PUT', '/team/team-1', dict(body="owner=test-user3"), 200, None, 'OK'),
-            ('POST', '/team', dict(body="name=team-2&owner=test%20user"), 200, None, 'OK'),
+            ('PUT', '/team/team-1', dict(body="members[]=test-user3"), 400, None, RESPONSE_400),
+            ('GET', '/team/team-1', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name='team-1', member_count=0)),
+            ('POST', '/team', dict(body="name=team-2&owner=test%20user&members[]=test%20user"), 200, None, 'OK'),
+            ('GET', '/team/team-2', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name='team-2', member_count=1)),
+            ('POST', '/team', dict(body="name=team-3&owner=test%20user&members[]=test%20user&members[]=test-user3"), 200, None, 'OK'),
+            ('GET', '/team/team-3', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name='team-3', member_count=2)),
             ('DELETE', '/team/team-2', dict(), 200, None, 'OK'),
+            ('DELETE', '/team/team-3', dict(), 200, None, 'OK'),
             ('GET', '/team', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
-            ('POST', '/team/team-1/members', dict(body="item=test%20user"), 200, None, 'OK'),
+            ('POST', '/team/team-1/members', dict(body="members[]=test%20user"), 200, None, 'OK'),
             ('GET', '/team/team-1/members', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
             ('POST', '/user', dict(body="name=test-user4&age=32"), 200, None, 'OK'),
-            ('POST', '/team/team-1/members', dict(body="item=test-user4"), 200, None, 'OK'),
+            ('POST', '/team/team-1/members', dict(body="members[]=test-user4"), 200, None, 'OK'),
             ('DELETE', '/team/team-1/members/test-user4', dict(), 200, None, 'OK'),
-            ('PUT', '/team/team-1/members/test-user4', dict(body=""), 400, None, '<html><title>400:badrequest</title><body>400:badrequest</body></html>'),
+            ('PUT', '/team/team-1/members/test-user4', dict(body=""), 400, None, RESPONSE_400),
             ('GET', '/team/team-1/members', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
             ('GET', '/user/test-user4', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test-user4", age=32)),
             ('POST', '/team/team-1/projects', dict(body="name=project-1&module.name=module-name"), 200, None, 'OK'),
@@ -56,6 +65,20 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
             ('GET', '/team/team-1/projects/project-1', dict(), 200, lambda body: load_json(body), self.__assert_project_data(name="project-1", module="module-name")),
             ('GET', '/team/team-1/projects/project-1/module', dict(), 200, lambda body: load_json(body), self.__assert_module_data(name="module-name")),
         ]
+
+    from nose_focus import focus
+    @focus
+    def test_end_to_end_flow(self):
+        data = self.__get_test_data()
+
+        print("")
+        print("")
+        print("")
+        print("Doing end-to-end test:")
+        print("")
+        for url_arguments in data:
+            self.validate_request(url_arguments)
+        print("")
 
     def setUp(self):
         super(MongoEngineEndToEndTestCase, self).setUp()
@@ -118,7 +141,7 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
 
         return handle
 
-    def __assert_team_data(self, owner=None, name=None):
+    def __assert_team_data(self, owner=None, name=None, member_count=None):
         def handle(obj):
             if isinstance(obj, (list, tuple)):
                 obj = obj[0]
@@ -129,6 +152,9 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
 
             if name is not None:
                 expect(obj['name']).to_equal(name)
+
+            if member_count is not None:
+                expect(obj['members']).to_length(member_count)
 
         return handle
 
@@ -142,6 +168,7 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
     def validate_request(self, url_arguments):
         method, url, options, expected_status_code, transform_body, expected_body = url_arguments
 
+        print("B %s %s..." % (method, url))
         self.http_client.fetch(
             self.get_url(url),
             method=method,
@@ -150,7 +177,6 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         )
         response = self.wait()
         expect(response.code).to_equal(expected_status_code)
-        print("%s %s - %s" % (method, url, response.code))
 
         body = response.body
         if transform_body is not None:
@@ -161,17 +187,7 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         else:
             expect(body).to_be_like(expected_body)
 
-    def test_end_to_end_flow(self):
-        data = self.__get_test_data()
-
-        print("")
-        print("")
-        print("")
-        print("Doing end-to-end test:")
-        print("")
-        for url_arguments in data:
-            self.validate_request(url_arguments)
-        print("")
+        print("A %s %s - %s" % (method, url, response.code))
 
 
 def load_json(json_string):

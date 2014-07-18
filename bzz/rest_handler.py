@@ -235,7 +235,9 @@ class ModelRestHandler(tornado.web.RequestHandler):
         _, parent = yield self.get_instance_property(root, args[1:])
         request_data = self.get_request_data()
         model_type = self.get_property_model(parent, args[-1])
-        instance = yield self.get_instance(request_data['item'], model=model_type)
+        key = "%s[]" % args[-1]
+        value = request_data[key]
+        instance = yield self.get_instance(value, model=model_type)
         yield self.associate_instance(root, args[-1], instance)
         raise gen.Return(instance)
 
@@ -279,12 +281,26 @@ class ModelRestHandler(tornado.web.RequestHandler):
         root = yield self.get_instance(pk)
         model_type = root.__class__
         instance = parent = None
+
+        if not self.validate_update_request_data(root, model_type):
+            self.send_error(400, reason="Invalid multiple field")
+            raise tornado.web.Finish()
+
         if len(args) > 1:
             instance, parent = yield self.get_instance_property(root, args[1:])
             model_type = instance.__class__
             property_name, pk = args[-1].split('/')
         instance, updated = yield self.update_instance(pk, self.get_request_data(), model_type, instance, parent)
         raise gen.Return([instance, updated, model_type])
+
+    def validate_update_request_data(self, root, model_type):
+        data = self.get_request_data()
+
+        for key, value in data.items():
+            if key.endswith('[]'):
+                return False
+
+        return True
 
     @gen.coroutine
     def delete(self, *args, **kwargs):
@@ -359,7 +375,13 @@ class ModelRestHandler(tornado.web.RequestHandler):
                 else:
                     key, value = 'item', item
 
-                data[key] = unquote(value)
+                if key in data:
+                    old = data[key]
+                    data[key] = []
+                    data[key].append(old)
+                    data[key].append(unquote(value))
+                else:
+                    data[key] = unquote(value)
         else:
             for arg in list(self.request.arguments.keys()):
                 data[arg] = self.get_argument(arg)
