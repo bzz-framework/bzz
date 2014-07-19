@@ -975,3 +975,23 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(root_node.allow_create_on_associate).to_be_false()
         expect(root_node.children).to_length(2)
         expect(root_node.required_children).to_be_empty()
+
+        child_node = root_node.children['id']
+        expect(child_node.name).to_equal('id')
+        expect(child_node.slug).to_equal('id')
+        expect(child_node.target_name).to_equal('_id')
+        expect(child_node.model_type).to_equal(None)
+        expect(child_node.is_multiple).to_be_false()
+        expect(child_node.allow_create_on_associate).to_be_false()
+        expect(child_node.children).to_be_empty()
+        expect(child_node.required_children).to_be_empty()
+
+        child_node = root_node.children['prop']
+        expect(child_node.name).to_equal('prop')
+        expect(child_node.slug).to_equal('prop')
+        expect(child_node.target_name).to_equal('prop')
+        expect(child_node.model_type).to_equal(None)
+        expect(child_node.is_multiple).to_be_false()
+        expect(child_node.allow_create_on_associate).to_be_false()
+        expect(child_node.children).to_be_empty()
+        expect(child_node.required_children).to_be_empty()

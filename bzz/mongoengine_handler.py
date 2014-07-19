@@ -35,6 +35,27 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
             child_node = core.Node(field_name)
             collection[field_name] = child_node
 
+            child_node.target_name = field.db_field
+            child_node.model_type = cls.get_model(field)
+
+    @classmethod
+    def get_model(cls, field):
+        return cls.get_document_type(field)
+
+    @classmethod
+    def get_document_type(cls, field):
+        if cls.is_list_field(field):
+            field = field.field
+        return getattr(field, 'document_type', None)
+
+    @classmethod
+    def is_list_field(cls, field):
+        return isinstance(field, mongoengine.ListField)
+
+    @classmethod
+    def is_reference_field(cls, field):
+        return isinstance(field, mongoengine.ReferenceField)
+
     @gen.coroutine
     def save_new_instance(self, model, data):
         instance = model()
@@ -226,14 +247,6 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
         return 'id'
 
-    def get_document_type(self, field):
-        if self.is_list_field(field):
-            field = field.field
-        return field.document_type
-
-    def get_model(self, field):
-        return self.get_document_type(field)
-
     @gen.coroutine
     def associate_instance(self, obj, field_name, instance):
         if obj is None:
@@ -249,12 +262,6 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
 
     def is_embedded_field(self, field):
         return isinstance(field, mongoengine.EmbeddedDocumentField)
-
-    def is_list_field(self, field):
-        return isinstance(field, mongoengine.ListField)
-
-    def is_reference_field(self, field):
-        return isinstance(field, mongoengine.ReferenceField)
 
     def get_property_model(self, obj, field_name):
         property_name = field_name
