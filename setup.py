@@ -25,7 +25,6 @@ tests_require = [
     'markupsafe',
     'sphinx',
     'mongoengine',
-    'awesome-slugify',
     'nose-focus',
 ]
 
@@ -55,6 +54,7 @@ bzz is a Rest API framework for working bees.
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
+        'awesome-slugify',
         'cow-framework>=1.0.0',
         'blinker',
         'pyjwt',

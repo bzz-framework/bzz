@@ -11,6 +11,7 @@
 import mongoengine
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
+from nose_focus import focus
 import tornado.testing as testing
 from tornado.httpclient import HTTPError
 from preggy import expect
@@ -18,6 +19,7 @@ import derpconf.config as config
 import bson.objectid as oid
 
 import bzz
+import bzz.mongoengine_handler as me
 import bzz.signals as signals
 import bzz.utils as utils
 import tests.base as base
@@ -956,3 +958,20 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         student.reload()
         expect(person).not_to_be_null()
         expect(student.person).to_be_null()
+
+    @focus
+    def test_can_get_tree_for_single_node(self):
+        class Root(mongoengine.Document):
+            prop = mongoengine.StringField()
+            meta = {'collection': 'root_collection'}
+
+        root_node = me.MongoEngineRestHandler.get_tree(Root)
+
+        expect(root_node.name).to_equal('Root')
+        expect(root_node.slug).to_equal('root')
+        expect(root_node.target_name).to_equal('root_collection')
+        expect(root_node.model_type).to_equal(Root)
+        expect(root_node.is_multiple).to_be_false()
+        expect(root_node.allow_create_on_associate).to_be_false()
+        expect(root_node.children).to_length(2)
+        expect(root_node.required_children).to_be_empty()

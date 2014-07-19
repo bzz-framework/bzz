@@ -8,6 +8,8 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
+import slugify
+
 
 class Node(object):
     def __init__(self, name):
@@ -15,6 +17,8 @@ class Node(object):
             raise ValueError("Can't create unnamed node.")
 
         self.name = name
+        self.slug = slugify.slugify(self.name.lower())
+        self.target_name = name
         self.model_type = None
         self.is_multiple = False
         self.allow_create_on_associate = False
