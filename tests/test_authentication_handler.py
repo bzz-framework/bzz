@@ -143,8 +143,6 @@ class AuthenticationHandlerTestCase(base.ApiTestCase):
         expect(response.code).to_equal(200)
         expect(load_json(response.body)).to_equal(dict(authenticated=False))
 
-    from nose_focus import focus
-    @focus
     @testing.gen_test
     def test_cannot_authenticate_a_user_with_invalid_google_plus_token(self):
         try:
