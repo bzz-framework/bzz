@@ -20,11 +20,11 @@ import derpconf.config as config
 import bzz
 import bzz.utils as utils
 import tests.base as base
-
+from bzz.auth_handler import GoogleProvider
 
 class MockProvider(bzz.AuthenticationProvider):
     @classmethod
-    def get_name(cls):
+    def get_name(self):
         return 'mock'
 
     @classmethod
@@ -50,6 +50,11 @@ def load_json(json_string):
 
 
 class TestServer(server.Server):
+
+    def __init__(self, *args, **kwargs):
+        self.io_loop = kwargs.pop('io_loop', None)
+        super(TestServer, self).__init__(*args, **kwargs)
+
     @property
     def handlers_cfg(self):
         return {
@@ -60,9 +65,11 @@ class TestServer(server.Server):
     def get_handlers(self):
         routes = [
             bzz.AuthenticationHandler.routes_for(
-                MockProvider, **self.handlers_cfg),
+                MockProvider(self.io_loop), **self.handlers_cfg),
             bzz.AuthenticationHandler.routes_for(
-                MockProviderUnauthorized, **self.handlers_cfg),
+                MockProviderUnauthorized(self.io_loop), **self.handlers_cfg),
+            bzz.AuthenticationHandler.routes_for(
+                GoogleProvider(self.io_loop), **self.handlers_cfg),
         ]
         return [route for route_list in routes for route in route_list]
 
@@ -76,7 +83,7 @@ class AuthenticationHandlerTestCase(base.ApiTestCase):
 
     def get_server(self):
         cfg = config.Config(**self.get_config())
-        self.server = TestServer(config=cfg)
+        self.server = TestServer(config=cfg, io_loop=self.io_loop)
         return self.server
 
     def mock_auth_cookie(
@@ -135,3 +142,20 @@ class AuthenticationHandlerTestCase(base.ApiTestCase):
 
         expect(response.code).to_equal(200)
         expect(load_json(response.body)).to_equal(dict(authenticated=False))
+
+    from nose_focus import focus
+    @focus
+    @testing.gen_test
+    def test_cannot_authenticate_a_user_with_invalid_google_plus_token(self):
+        try:
+            response = yield self.http_client.fetch(
+                self.get_url('/authenticate/google/'), method='POST',
+                body=utils.dumps({
+                    'access_token': 'INVALID-TOKEN',
+                })
+            )
+        except HTTPError, e:
+            response = e.response
+        expect(response.code).to_equal(401)
+        expect(response.reason).to_equal('Unauthorized')
+
