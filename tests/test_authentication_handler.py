@@ -9,6 +9,7 @@
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
 from datetime import datetime
+from mock import Mock, patch
 
 import cow.server as server
 import tornado.testing as testing
@@ -21,6 +22,7 @@ import bzz
 import bzz.utils as utils
 import tests.base as base
 from bzz.auth_handler import GoogleProvider
+
 
 class MockProvider(bzz.AuthenticationProvider):
     @classmethod
@@ -94,7 +96,9 @@ class AuthenticationHandlerTestCase(base.ApiTestCase):
         token = jwt.encode({
             'sub': user_id, 'iss': provider, 'token': token, 'exp': expiration
         })
-        return '='.join((self.server.handlers_cfg['cookie_name'], token))
+        return '='.join((
+            self.server.handlers_cfg['cookie_name'], token.decode('utf-8')
+        ))
 
     @testing.gen_test
     def test_can_authenticate(self):
@@ -116,7 +120,7 @@ class AuthenticationHandlerTestCase(base.ApiTestCase):
                 method='POST',
                 body=utils.dumps(dict(access_token='1234567890'))
             )
-        except HTTPError, e:
+        except HTTPError as e:
             expect(e.response.code).to_equal(401)
             expect(e.response.reason).to_equal('Unauthorized')
             expect(e.response.headers.get('Cookie')).to_equal(None)
@@ -152,8 +156,29 @@ class AuthenticationHandlerTestCase(base.ApiTestCase):
                     'access_token': 'INVALID-TOKEN',
                 })
             )
-        except HTTPError, e:
+        except HTTPError as e:
             response = e.response
         expect(response.code).to_equal(401)
         expect(response.reason).to_equal('Unauthorized')
 
+    @testing.gen_test
+    def test_can_authenticate_a_user_with_valid_google_plus_token(self):
+        with patch.object(GoogleProvider, '_fetch_userinfo') as provider_mock:
+            result = gen.Future()
+            response_mock = Mock(code=200, body=(
+                '{"email":"test@gmail.com", "name":"Teste", "id":"56789"}'
+            ))
+            result.set_result(response_mock)
+            provider_mock.return_value = result
+            try:
+                response = yield self.http_client.fetch(
+                    self.get_url('/authenticate/google/'), method='POST',
+                    body=utils.dumps({
+                        'access_token': 'VALID-TOKEN',
+                    })
+                )
+            except HTTPError as e:
+                response = e.response
+
+            expect(response.code).to_equal(200)
+            expect(utils.loads(response.body)['authenticated']).to_be_true()

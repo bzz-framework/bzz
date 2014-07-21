@@ -157,7 +157,7 @@ class GoogleProvider(AuthenticationProvider):
 
         try:
             response = yield self.http_client.fetch(url)
-        except httpclient.HTTPError, e:
+        except httpclient.HTTPError as e:
             response = e.response
 
         raise gen.Return(response)
