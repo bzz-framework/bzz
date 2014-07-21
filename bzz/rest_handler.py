@@ -12,6 +12,7 @@ import tornado.web
 import tornado.gen as gen
 from six.moves.urllib.parse import unquote
 
+import bzz.core as core
 import bzz.signals as signals
 import bzz.utils as utils
 
@@ -53,6 +54,30 @@ class ModelRestHandler(tornado.web.RequestHandler):
         ]
 
         return routes
+
+    @classmethod
+    def get_tree(cls, model):
+        root_node = core.Node(cls.get_model_name(model))
+        root_node.target_name = cls.get_model_collection(model)
+
+        if root_node.target_name is None:
+            root_node.target_name = root_node.slug
+
+        root_node.model_type = model
+
+        cls.parse_children(model, root_node.children)
+
+        return root_node
+
+    @classmethod
+    def parse_children(cls, model, collection):
+        for field_name, field in cls.get_model_fields(model).items():
+            child_node = core.Node(field_name)
+            collection[field_name] = child_node
+
+            child_node.target_name = field.db_field
+            child_node.model_type = cls.get_model(field)
+
 
     def initialize(self, model, name, prefix):
         self.model = model

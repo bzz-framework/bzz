@@ -995,3 +995,25 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(child_node.allow_create_on_associate).to_be_false()
         expect(child_node.children).to_be_empty()
         expect(child_node.required_children).to_be_empty()
+
+    @focus
+    def test_can_get_tree_for_embedded_document(self):
+        class Embedded(mongoengine.EmbeddedDocument):
+            prop = mongoengine.StringField()
+            meta = {'collection': 'embedded_collection'}
+
+        class Root(mongoengine.Document):
+            prop = mongoengine.EmbeddedDocumentField(Embedded)
+            meta = {'collection': 'root_collection'}
+
+        root_node = me.MongoEngineRestHandler.get_tree(Root)
+
+        child_node = root_node.children['prop']
+        expect(child_node.name).to_equal('prop')
+        expect(child_node.slug).to_equal('prop')
+        expect(child_node.target_name).to_equal('prop')
+        expect(child_node.model_type).to_equal(Embedded)
+        expect(child_node.is_multiple).to_be_false()
+        expect(child_node.allow_create_on_associate).to_be_true()
+        expect(child_node.children).to_length(1)
+        expect(child_node.required_children).to_be_empty()

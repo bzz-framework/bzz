@@ -15,28 +15,20 @@ import mongoengine
 import bson
 
 import bzz.rest_handler as bzz
-import bzz.core as core
 
 
 class MongoEngineRestHandler(bzz.ModelRestHandler):
     @classmethod
-    def get_tree(cls, model):
-        root_node = core.Node(model.__name__)
-        root_node.target_name = model._meta.get('collection', root_node.slug)
-        root_node.model_type = model
-
-        cls.parse_children(model, root_node.children)
-
-        return root_node
+    def get_model_name(cls, model):
+        return model.__name__
 
     @classmethod
-    def parse_children(cls, model, collection):
-        for field_name, field in model._fields.items():
-            child_node = core.Node(field_name)
-            collection[field_name] = child_node
+    def get_model_collection(cls, model):
+        return model._meta.get('collection', None)
 
-            child_node.target_name = field.db_field
-            child_node.model_type = cls.get_model(field)
+    @classmethod
+    def get_model_fields(cls, model):
+        return model._fields
 
     @classmethod
     def get_model(cls, field):
