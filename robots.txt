@@ -1,1 +1,3 @@
-dist/robots.txt
+# robotstxt.org/
+
+User-agent: *
