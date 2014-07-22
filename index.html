@@ -17,8 +17,6 @@ from tornado.ioloop import IOLoop
 from mongoengine import *
 import bzz.mocked_routes as rt
 
-#first create the routes
-
 # status 200 is assumed
 get_opt = {
     'body': '{}'
@@ -30,12 +28,10 @@ post_opt = {
     },
     'status': 203
 }
-
 mocked_routes = rt.MockedRoutes([
   ('GET', '/sample', get_opt),
   ('POST', '/sample', post_opt),
 ])
-
 application = Application(
     mocked_routes.handlers()
 )
