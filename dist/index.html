@@ -1,6 +1,20 @@
-<!DOCTYPE html><html class=no-js><head><meta charset=utf-8><title>bzz</title><meta name=description content=""><meta name=viewport content="width=device-width"><link rel="shortcut icon" href=/6df2b309.favicon.ico><link href="http://fonts.googleapis.com/css?family=Lora:400,400italic|Amatic+SC:700|Inconsolata:400,700" rel=stylesheet type=text/css><!-- Place favicon.ico and apple-touch-icon.png in the root directory --><link rel=stylesheet href=styles/db4badba.main.css><script src=scripts/vendor/1cb556bb.modernizr.js></script><body><script src=scripts/4776dee8.vendor.js></script><!-- Google Analytics: change UA-XXXXX-X to be your site's ID. --><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
+<!DOCTYPE html><html class=no-js><head><meta charset=utf-8><title>bzz</title><meta name=description content=""><meta name=viewport content="width=device-width"><link rel="shortcut icon" href=/6df2b309.favicon.ico><!--<link href='http://fonts.googleapis.com/css?family=Lora:400,400italic|Amatic+SC:700|Inconsolata:400,700' rel='stylesheet' type='text/css'>--><link href="http://fonts.googleapis.com/css?family=Lora:400,400italic|Amatic+SC:700|Inconsolata:400,700" rel=stylesheet type=text/css><!-- Place favicon.ico and apple-touch-icon.png in the root directory --><link rel=stylesheet href=styles/a9e88e67.vendor.css><link rel=stylesheet href=styles/f9dea1a6.main.css><script src=scripts/vendor/6d15dd2a.modernizr.js></script><body><script src=scripts/bdd794ff.vendor.js></script><header><div class=logo></div><div class=slogan>THE REST FRAMEWORK FOR WORKER BEES</div></header><div class=container><nav><ul><li><a href="http://bzz.readthedocs.org/" target=blank>documentation</a></li><li><a href="http://github.com/heynemann/bzz/" target=blank>source</a></li><li><a href=https://github.com/heynemann/bzz/issues target=blank>report issues</a></li></ul></nav></div><div class="container getting-started"><h1>GETTING STARTED</h1><p>Kickstart your API fast with ORM support, Authentication and Mock routes. Just install it with pip and you are good to go.</p><a href=javascript: class=video></a><div class=watch>JUST WATCH IT!</div></div><div class="container area"><h1>ORM-Based Routes</h1><p>bzz understands the models you've mapped and creates restful routes that you can add to your tornado app.</p><a class=learn href=#>Learn more ›</a><div class=code><div class=header><i class="red button"></i><i class="yellow button"></i><i class="green button"></i></div><div class=body><pre><code class=language-python>import tornado.web
+from tornado.ioloop import IOLoop
+from mongoengine import *
+import bzz
+
+# just create your own documents
+class User(Document):
+   name = StringField()
+
+routes = bzz.ModelRestHandler. \
+            routes_for(User)
+application = tornado.web. \
+            Application(routes)
+application.listen(8888)
+IOLoop.instance().start()</code></pre></div></div></div><!-- Google Analytics: change UA-XXXXX-X to be your site's ID. --><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
             function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;
             e=o.createElement(i);r=o.getElementsByTagName(i)[0];
             e.src='//www.google-analytics.com/analytics.js';
             r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));
-            ga('create','UA-53052813-1');ga('send','pageview');</script><script src=scripts/3431b5a9.main.js></script>
+            ga('create','UA-53052813-1');ga('send','pageview');</script><script src=scripts/619fb58f.main.js></script>

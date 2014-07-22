@@ -34,8 +34,8 @@ module.exports = function (grunt) {
                 tasks: ['bowerInstall']
             },
             compass: {
-              files: ['<%= config.app %>/styles/{,*/}*.{scss,sass}'],
-              tasks: ['compass:server', 'autoprefixer']
+                files: ['<%= config.app %>/styles/{,*/}*.{scss,sass}'],
+                tasks: ['compass:server', 'autoprefixer']
             },
             coffee: {
                 files: ['<%= config.app %>/scripts/{,*/}*.{coffee,litcoffee,coffee.md}'],
@@ -71,31 +71,31 @@ module.exports = function (grunt) {
 
         // Compiles Sass to CSS and generates necessary files if requested
         compass: {
-          options: {
-            sassDir: '<%= config.app %>/styles',
-            cssDir: '.tmp/styles',
-            generatedImagesDir: '.tmp/images/generated',
-            imagesDir: '<%= config.app %>/images',
-            javascriptsDir: '<%= config.app %>/scripts',
-            fontsDir: '<%= config.app %>/styles/fonts',
-            importPath: './bower_components',
-            httpImagesPath: '/images',
-            httpGeneratedImagesPath: '/images/generated',
-            httpFontsPath: '/styles/fonts',
-            relativeAssets: false,
-            assetCacheBuster: false,
-            raw: 'Sass::Script::Number.precision = 10\n'
-          },
-          dist: {
             options: {
-              generatedImagesDir: '<%= config.dist %>/images/generated'
+                sassDir: '<%= config.app %>/styles',
+                cssDir: '.tmp/styles',
+                generatedImagesDir: '.tmp/images/generated',
+                imagesDir: '<%= config.app %>/images',
+                javascriptsDir: '<%= config.app %>/scripts',
+                fontsDir: '<%= config.app %>/styles/fonts',
+                importPath: './bower_components',
+                httpImagesPath: '/images',
+                httpGeneratedImagesPath: '/images/generated',
+                httpFontsPath: '/styles/fonts',
+                relativeAssets: false,
+                assetCacheBuster: false,
+                raw: 'Sass::Script::Number.precision = 10\n'
+            },
+            dist: {
+                options: {
+                    generatedImagesDir: '<%= config.dist %>/images/generated'
+                }
+            },
+            server: {
+                options: {
+                    debugInfo: true
+                }
             }
-          },
-          server: {
-            options: {
-              debugInfo: true
-            }
-          }
         },
 
         // The actual grunt server settings
@@ -419,7 +419,7 @@ module.exports = function (grunt) {
                 'compass:dist',
                 //'sass',
                 'copy:styles',
-                'imagemin',
+                //'imagemin',
                 'svgmin'
             ]
         }
