@@ -78,6 +78,47 @@ IOLoop.instance().start()</code></pre>
             </div>
         </div>
 
+        <div class="container area">
+            <h1>MOCKED ROUTES</h1>
+            <p>Specially when working with distributed teams, it's very valuable to provide an API contract early in the process. bzz provides easy mocking of routes to enable the clients of your API to work, while you focus on creating the actual API.</p>
+            <a class="learn" href="#">Learn more ›</a>
+            <div class="code">
+                <div class="header"><i class="red button"></i><i class="yellow button"></i><i class="green button"></i></div>
+                <div class="body">
+                    <pre><code class="language-python">from tornado.web import Application
+from tornado.ioloop import IOLoop
+from mongoengine import *
+import bzz.mocked_routes as rt
+
+#first create the routes
+
+# status 200 is assumed
+get_opt = {
+    'body': '{}'
+}
+post_opt = {
+    'body': 'OK'
+    'cookies': {
+        'super': 'cow'
+    },
+    'status': 203
+}
+
+mocked_routes = rt.MockedRoutes([
+  ('GET', '/sample', get_opt),
+  ('POST', '/sample', post_opt),
+])
+
+application = Application(
+    mocked_routes.handlers()
+)
+application.listen(8888)
+IOLoop.instance().start()</code></pre>
+                </div>
+            </div>
+        </div>
+
+
         <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
         <script>
             (function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
