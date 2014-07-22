@@ -66,6 +66,8 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
             ('GET', '/team/team-1/projects/project-1/module', dict(), 200, lambda body: load_json(body), self.__assert_module_data(name="module-name")),
         ]
 
+    from nose_focus import focus
+    @focus
     def test_end_to_end_flow(self):
         data = self.__get_test_data()
 
@@ -217,8 +219,8 @@ class EndToEndTeam(me.Document):
     meta = {'collection': 'EndToEndTeam'}
 
     code = me.StringField()
-    owner = me.ReferenceField("EndToEndUser")
-    members = me.ListField(me.ReferenceField("EndToEndUser"))
+    owner = me.ReferenceField(EndToEndUser)
+    members = me.ListField(me.ReferenceField(EndToEndUser))
     projects = me.ListField(me.EmbeddedDocumentField("Project"))
 
     @classmethod

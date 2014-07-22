@@ -49,25 +49,31 @@ class ModelRestHandler(tornado.web.RequestHandler):
         if prefix:
             details_regex = ('/%s' % prefix.strip('/')) + details_regex
 
+        tree = handler_class.get_tree(model)
+
+        options = dict(model=model, name=name, prefix=prefix, tree=tree)
         routes = [
-            (details_regex % name, handler_class, dict(model=model, name=name, prefix=prefix))
+            (details_regex % name, handler_class, options)
         ]
 
         return routes
 
     @classmethod
-    def get_tree(cls, model):
-        root_node = core.Node(cls.get_model_name(model))
-        root_node.target_name = cls.get_model_collection(model)
+    def get_tree(cls, model, node=None):
+        if node is None:
+            node = core.Node(cls.get_model_name(model), is_root=True)
 
-        if root_node.target_name is None:
-            root_node.target_name = root_node.slug
+        node.target_name = cls.get_model_collection(model)
+        node.is_multiple = False
 
-        root_node.model_type = model
+        if node.target_name is None:
+            node.target_name = node.slug
 
-        cls.parse_children(model, root_node.children)
+        node.model_type = model
 
-        return root_node
+        cls.parse_children(model, node.children)
+
+        return node
 
     @classmethod
     def parse_children(cls, model, collection):
@@ -75,14 +81,35 @@ class ModelRestHandler(tornado.web.RequestHandler):
             child_node = core.Node(field_name)
             collection[field_name] = child_node
 
-            child_node.target_name = field.db_field
+            child_node.is_multiple = cls.is_list_field(field)
+            child_node.target_name = cls.get_field_target_name(field)
+            child_node.allows_create_on_associate = \
+                cls.allows_create_on_associate(field)
+            child_node.is_lazy_loaded = \
+                cls.is_lazy_loaded(field)
+
             child_node.model_type = cls.get_model(field)
 
+            if child_node.model_type is not None:
+                cls.parse_children(child_node.model_type, child_node.children)
 
-    def initialize(self, model, name, prefix):
+    def get_node(self, path):
+        if '.' not in path:
+            return self.tree.get(path, None)
+
+        node = self.tree
+        for item in path.split('.'):
+            node = node.get(item, None)
+            if node is None:
+                return None
+
+        return node
+
+    def initialize(self, model, name, prefix, tree):
         self.model = model
         self.name = name
         self.prefix = prefix
+        self.tree = tree
 
     def write_json(self, obj):
         self.set_header("Content-Type", "application/json")
@@ -107,17 +134,22 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
         return [args[0]] + items
 
+    @classmethod
+    def get_path_from_args(cls, args):
+        path = ".".join([arg.split('/')[0] for arg in args[1:]])
+        return path
+
     @gen.coroutine
     def get(self, *args, **kwargs):
         args = self.parse_arguments(args)
-        is_multiple = yield self.is_multiple(args)
-        model_type = yield self.get_model_from_path(args)
+        path = self.get_path_from_args(args)
+        node = self.tree.find_by_path(path)
 
-        if is_multiple and '/' not in args[-1]:
-            signals.pre_get_list.send(model_type, arguments=args, handler=self)
+        if (node.is_root or node.is_multiple) and '/' not in args[-1]:
+            signals.pre_get_list.send(node.model_type, arguments=args, handler=self)
             yield self.handle_get_list(args)
         else:
-            signals.pre_get_instance.send(model_type, arguments=args, handler=self)
+            signals.pre_get_instance.send(node.model_type, arguments=args, handler=self)
             yield self.handle_get_one(args)
 
     @gen.coroutine

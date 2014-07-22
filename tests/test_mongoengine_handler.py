@@ -11,7 +11,6 @@
 import mongoengine
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
-from nose_focus import focus
 import tornado.testing as testing
 from tornado.httpclient import HTTPError
 from preggy import expect
@@ -959,7 +958,6 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(person).not_to_be_null()
         expect(student.person).to_be_null()
 
-    @focus
     def test_can_get_tree_for_single_node(self):
         class Root(mongoengine.Document):
             prop = mongoengine.StringField()
@@ -972,7 +970,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(root_node.target_name).to_equal('root_collection')
         expect(root_node.model_type).to_equal(Root)
         expect(root_node.is_multiple).to_be_false()
-        expect(root_node.allow_create_on_associate).to_be_false()
+        expect(root_node.allows_create_on_associate).to_be_false()
         expect(root_node.children).to_length(2)
         expect(root_node.required_children).to_be_empty()
 
@@ -982,7 +980,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(child_node.target_name).to_equal('_id')
         expect(child_node.model_type).to_equal(None)
         expect(child_node.is_multiple).to_be_false()
-        expect(child_node.allow_create_on_associate).to_be_false()
+        expect(child_node.allows_create_on_associate).to_be_false()
         expect(child_node.children).to_be_empty()
         expect(child_node.required_children).to_be_empty()
 
@@ -992,14 +990,13 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(child_node.target_name).to_equal('prop')
         expect(child_node.model_type).to_equal(None)
         expect(child_node.is_multiple).to_be_false()
-        expect(child_node.allow_create_on_associate).to_be_false()
+        expect(child_node.allows_create_on_associate).to_be_false()
         expect(child_node.children).to_be_empty()
         expect(child_node.required_children).to_be_empty()
 
-    @focus
     def test_can_get_tree_for_embedded_document(self):
         class Embedded(mongoengine.EmbeddedDocument):
-            prop = mongoengine.StringField()
+            name = mongoengine.StringField()
             meta = {'collection': 'embedded_collection'}
 
         class Root(mongoengine.Document):
@@ -1014,6 +1011,111 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(child_node.target_name).to_equal('prop')
         expect(child_node.model_type).to_equal(Embedded)
         expect(child_node.is_multiple).to_be_false()
-        expect(child_node.allow_create_on_associate).to_be_true()
+        expect(child_node.allows_create_on_associate).to_be_true()
         expect(child_node.children).to_length(1)
         expect(child_node.required_children).to_be_empty()
+
+        embedded_doc = child_node.children['name']
+        expect(embedded_doc.name).to_equal('name')
+        expect(embedded_doc.slug).to_equal('name')
+        expect(embedded_doc.target_name).to_equal('name')
+        expect(embedded_doc.model_type).to_be_null()
+        expect(embedded_doc.is_multiple).to_be_false()
+        expect(embedded_doc.allows_create_on_associate).to_be_false()
+        expect(embedded_doc.children).to_be_empty()
+        expect(embedded_doc.required_children).to_be_empty()
+
+    def test_can_get_tree_for_reference_fields(self):
+        class Reference(mongoengine.Document):
+            name = mongoengine.StringField()
+            meta = {'collection': 'reference_collection'}
+
+        class Root(mongoengine.Document):
+            prop = mongoengine.ReferenceField(Reference)
+            meta = {'collection': 'root_collection'}
+
+        root_node = me.MongoEngineRestHandler.get_tree(Root)
+
+        child_node = root_node.children['prop']
+        expect(child_node.name).to_equal('prop')
+        expect(child_node.slug).to_equal('prop')
+        expect(child_node.target_name).to_equal('prop')
+        expect(child_node.model_type).to_equal(Reference)
+        expect(child_node.is_multiple).to_be_false()
+        expect(child_node.allows_create_on_associate).to_be_false()
+        expect(child_node.children).to_length(2)
+        expect(child_node.required_children).to_be_empty()
+
+        reference_doc = child_node.children['name']
+        expect(reference_doc.name).to_equal('name')
+        expect(reference_doc.slug).to_equal('name')
+        expect(reference_doc.target_name).to_equal('name')
+        expect(reference_doc.model_type).to_be_null()
+        expect(reference_doc.is_multiple).to_be_false()
+        expect(reference_doc.allows_create_on_associate).to_be_false()
+        expect(reference_doc.children).to_be_empty()
+        expect(reference_doc.required_children).to_be_empty()
+
+    def test_can_get_tree_for_lists_of_reference(self):
+        class Reference(mongoengine.Document):
+            name = mongoengine.StringField()
+            meta = {'collection': 'reference_collection'}
+
+        class Root(mongoengine.Document):
+            prop = mongoengine.ListField(mongoengine.ReferenceField(Reference))
+            meta = {'collection': 'root_collection'}
+
+        root_node = me.MongoEngineRestHandler.get_tree(Root)
+
+        child_node = root_node.children['prop']
+        expect(child_node.name).to_equal('prop')
+        expect(child_node.slug).to_equal('prop')
+        expect(child_node.target_name).to_equal('prop')
+        expect(child_node.model_type).to_equal(Reference)
+        expect(child_node.is_multiple).to_be_true()
+        expect(child_node.allows_create_on_associate).to_be_false()
+        expect(child_node.children).to_length(2)
+        expect(child_node.required_children).to_be_empty()
+
+        reference_doc = child_node.children['name']
+        expect(reference_doc.name).to_equal('name')
+        expect(reference_doc.slug).to_equal('name')
+        expect(reference_doc.target_name).to_equal('name')
+        expect(reference_doc.model_type).to_be_null()
+        expect(reference_doc.is_multiple).to_be_false()
+        expect(reference_doc.allows_create_on_associate).to_be_false()
+        expect(reference_doc.children).to_be_empty()
+        expect(reference_doc.required_children).to_be_empty()
+
+    def test_can_get_tree_for_lists_of_embedded_document(self):
+        class Embedded(mongoengine.EmbeddedDocument):
+            name = mongoengine.StringField()
+            meta = {'collection': 'embedded_collection'}
+
+        class Root(mongoengine.Document):
+            prop = mongoengine.ListField(
+                mongoengine.EmbeddedDocumentField(Embedded)
+            )
+            meta = {'collection': 'root_collection'}
+
+        root_node = me.MongoEngineRestHandler.get_tree(Root)
+
+        child_node = root_node.children['prop']
+        expect(child_node.name).to_equal('prop')
+        expect(child_node.slug).to_equal('prop')
+        expect(child_node.target_name).to_equal('prop')
+        expect(child_node.model_type).to_equal(Embedded)
+        expect(child_node.is_multiple).to_be_true()
+        expect(child_node.allows_create_on_associate).to_be_true()
+        expect(child_node.children).to_length(1)
+        expect(child_node.required_children).to_be_empty()
+
+        embedded_doc = child_node.children['name']
+        expect(embedded_doc.name).to_equal('name')
+        expect(embedded_doc.slug).to_equal('name')
+        expect(embedded_doc.target_name).to_equal('name')
+        expect(embedded_doc.model_type).to_be_null()
+        expect(embedded_doc.is_multiple).to_be_false()
+        expect(embedded_doc.allows_create_on_associate).to_be_false()
+        expect(embedded_doc.children).to_be_empty()
+        expect(embedded_doc.required_children).to_be_empty()
