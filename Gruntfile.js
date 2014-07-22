@@ -33,6 +33,10 @@ module.exports = function (grunt) {
                 files: ['bower.json'],
                 tasks: ['bowerInstall']
             },
+            compass: {
+              files: ['<%= config.app %>/styles/{,*/}*.{scss,sass}'],
+              tasks: ['compass:server', 'autoprefixer']
+            },
             coffee: {
                 files: ['<%= config.app %>/scripts/{,*/}*.{coffee,litcoffee,coffee.md}'],
                 tasks: ['coffee:dist']
@@ -44,10 +48,10 @@ module.exports = function (grunt) {
             gruntfile: {
                 files: ['Gruntfile.js']
             },
-            sass: {
-                files: ['<%= config.app %>/styles/{,*/}*.{scss,sass}'],
-                tasks: ['sass:server', 'autoprefixer']
-            },
+            //sass: {
+                //files: ['<%= config.app %>/styles/{,*/}*.{scss,sass}'],
+                //tasks: ['sass:server', 'autoprefixer']
+            //},
             styles: {
                 files: ['<%= config.app %>/styles/{,*/}*.css'],
                 tasks: ['newer:copy:styles', 'autoprefixer']
@@ -63,6 +67,35 @@ module.exports = function (grunt) {
                     '<%= config.app %>/images/{,*/}*'
                 ]
             }
+        },
+
+        // Compiles Sass to CSS and generates necessary files if requested
+        compass: {
+          options: {
+            sassDir: '<%= config.app %>/styles',
+            cssDir: '.tmp/styles',
+            generatedImagesDir: '.tmp/images/generated',
+            imagesDir: '<%= config.app %>/images',
+            javascriptsDir: '<%= config.app %>/scripts',
+            fontsDir: '<%= config.app %>/styles/fonts',
+            importPath: './bower_components',
+            httpImagesPath: '/images',
+            httpGeneratedImagesPath: '/images/generated',
+            httpFontsPath: '/styles/fonts',
+            relativeAssets: false,
+            assetCacheBuster: false,
+            raw: 'Sass::Script::Number.precision = 10\n'
+          },
+          dist: {
+            options: {
+              generatedImagesDir: '<%= config.dist %>/images/generated'
+            }
+          },
+          server: {
+            options: {
+              debugInfo: true
+            }
+          }
         },
 
         // The actual grunt server settings
@@ -371,17 +404,20 @@ module.exports = function (grunt) {
         // Run some tasks in parallel to speed up build process
         concurrent: {
             server: [
-                'sass:server',
+                'compass:server',
+                //'sass:server',
                 'coffee:dist',
                 'copy:styles'
             ],
             test: [
                 'coffee',
+                'compass',
                 'copy:styles'
             ],
             dist: [
                 'coffee',
-                'sass',
+                'compass:dist',
+                //'sass',
                 'copy:styles',
                 'imagemin',
                 'svgmin'
