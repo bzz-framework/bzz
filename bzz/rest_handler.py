@@ -23,6 +23,7 @@ AVAILABLE_HANDLERS = {
 
 
 class ModelRestHandler(tornado.web.RequestHandler):
+
     @classmethod
     def routes_for(cls, handler, model, prefix='', resource_name=None):
         '''
@@ -32,7 +33,8 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
         * model is the Model class that you want routes for;
         * prefix is an optional argument that can be specified as means to include a prefix route (i.e.: '/api');
-        * resource_name is an optional argument that can be specified to change the route name. If no resource_name specified the route name is the __class__.__name__ for the specified model with underscores instead of camel case.
+        * resource_name is an optional argument that can be specified to change the route name. If no resource_name specified the
+          route name is the __class__.__name__ for the specified model with underscores instead of camel case.
 
         If you specify a prefix of '/api/' as well as resource_name of 'people' your route would be similar to:
 
