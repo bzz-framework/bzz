@@ -74,21 +74,24 @@ module.exports = function (grunt) {
             options: {
                 sassDir: '<%= config.app %>/styles',
                 cssDir: '.tmp/styles',
-                generatedImagesDir: '.tmp/images/generated',
                 imagesDir: '<%= config.app %>/images',
+                generatedImagesDir: '.tmp/images/generated',
                 javascriptsDir: '<%= config.app %>/scripts',
                 fontsDir: '<%= config.app %>/styles/fonts',
                 importPath: './bower_components',
-                //httpImagesPath: '../images',
-                //httpGeneratedImagesPath: '../images/generated',
-                //httpFontsPath: '../styles/fonts',
-                relativeAssets: true,
+                httpImagesPath: '/images',
+                httpGeneratedImagesPath: '/images/generated',
+                httpFontsPath: '/styles/fonts',
+                relativeAssets: false,
                 assetCacheBuster: false,
                 raw: 'Sass::Script::Number.precision = 10\n'
             },
             dist: {
                 options: {
-                    generatedImagesDir: '<%= config.dist %>/images/generated'
+                    generatedImagesDir: '<%= config.dist %>/images/generated',
+                    httpImagesPath: '../images',
+                    httpGeneratedImagesPath: '../images/generated',
+                    httpFontsPath: '../styles/fonts'
                 }
             },
             server: {
