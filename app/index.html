@@ -30,39 +30,41 @@
         <script src="../bower_components/prismjs/prism.js"></script>
         <!-- endbuild -->
 
-        <header>
-            <div class="logo"></div>
-            <div class="bee"></div>
-            <div class="slogan">THE REST FRAMEWORK FOR WORKER BEES</div>
-            <div class="path path1"></div>
-            <div class="path path2"></div>
-        </header>
+        <div class="root">
+            <header>
+                <div class="bg"></div>
+                <div class="logo"></div>
+                <div class="bee"></div>
+                <div class="slogan">THE REST FRAMEWORK FOR WORKER BEES</div>
+                <div class="path path1"></div>
+                <div class="path path2"></div>
+            </header>
 
-        <div class="container">
-            <nav>
-                <ul>
-                    <li><a href="http://bzz.readthedocs.org/" target="blank">documentation</a></li>
-                    <li><a href="http://github.com/heynemann/bzz/" target="blank">source</a></li>
-                    <li><a href="https://github.com/heynemann/bzz/issues" target="blank">report issues</a></li>
-                </ul>
-            </nav>
-        </div>
+            <div class="container">
+                <nav>
+                    <ul>
+                        <li><a href="http://bzz.readthedocs.org/" target="blank">documentation</a></li>
+                        <li><a href="http://github.com/heynemann/bzz/" target="blank">source</a></li>
+                        <li><a href="https://github.com/heynemann/bzz/issues" target="blank">report issues</a></li>
+                    </ul>
+                </nav>
+            </div>
 
-        <div class="container getting-started">
-            <h1>GETTING STARTED</h1>
-            <p>Kickstart your API fast with ORM support, Authentication and Mock routes. Just install it with pip and you are good to go.</p>
-            <a href="javascript:" class="video"></a>
-            <div class="watch">JUST WATCH IT!</div>
-        </div>
+            <div class="container getting-started">
+                <h1>GETTING STARTED</h1>
+                <p>Kickstart your API Model, Auth and Mock <a href="" class="inline yellow">beehives</a>. Just install it with pip and you are good to go.</p>
+                <a href="javascript:" class="video"></a>
+                <div class="watch">JUST WATCH IT!</div>
+            </div>
 
-        <div class="container area">
-            <h1>ORM-BASED ROUTES</h1>
-            <p>bzz understands the models you've mapped and creates restful routes that you can add to your tornado app.</p>
-            <a class="learn" href="#">Learn more ›</a>
-            <div class="code">
-                <div class="header"><i class="red button"></i><i class="yellow button"></i><i class="green button"></i></div>
-                <div class="body">
-                    <pre><code class="language-python">import tornado.web
+            <div class="container area">
+                <h1>MODEL-ORIENTED APIS</h1>
+                <p>bzz understands the models you've mapped and creates restful routes that you can add to your tornado app.</p>
+                <a class="learn" href="#">Learn more ›</a>
+                <div class="code">
+                    <div class="header"><i class="red button"></i><i class="yellow button"></i><i class="green button"></i></div>
+                    <div class="body">
+                        <pre><code class="language-python">from tornado.web import Application
 from tornado.ioloop import IOLoop
 from mongoengine import *
 import bzz
@@ -71,27 +73,25 @@ import bzz
 class User(Document):
    name = StringField()
 
-routes = bzz.ModelRestHandler. \
-            routes_for(User)
-app = tornado.web. \
-            Application(routes)
+routes = bzz.ModelHive \
+            .routes_for(User)
+app = Application(routes)
 app.listen(8888)
 IOLoop.instance().start()</code></pre>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="container area">
-            <h1>MOCKED ROUTES</h1>
-            <p>Specially when working with distributed teams, it's very valuable to provide an API contract early in the process. bzz provides easy mocking of routes to enable the clients of your API to work, while you focus on creating the actual API.</p>
-            <a class="learn" href="#">Learn more ›</a>
-            <div class="code">
-                <div class="header"><i class="red button"></i><i class="yellow button"></i><i class="green button"></i></div>
-                <div class="body">
-                    <pre><code class="language-python">from tornado.web import Application
+            <div class="container area">
+                <h1>MOCKED INTERACTION</h1>
+                <p>Specially when working with distributed teams, it's very valuable to provide an API contract early in the process. bzz provides easy mocking of interactions to enable clients of your API to work, while you focus on creating the actual API.</p>
+                <a class="learn" href="#">Learn more ›</a>
+                <div class="code">
+                    <div class="header"><i class="red button"></i><i class="yellow button"></i><i class="green button"></i></div>
+                    <div class="body">
+                        <pre><code class="language-python">from tornado.web import Application
 from tornado.ioloop import IOLoop
-from mongoengine import *
-import bzz.mocked_routes as rt
+import bzz
 
 # status 200 is assumed
 get_opt = {
@@ -104,7 +104,7 @@ post_opt = {
     },
     'status': 203
 }
-mocked_routes = rt.MockedRoutes([
+mocked_routes = bzz.MockHive([
   ('GET', '/sample', get_opt),
   ('POST', '/sample', post_opt),
 ])
@@ -113,18 +113,18 @@ app = Application(
 )
 app.listen(8888)
 IOLoop.instance().start()</code></pre>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="container area">
-            <h1>Authentication</h1>
-            <p>Why keep doing authentication over and over again? bzz automates authentication against a myriad of OAUTH sources for your API using <a class="inline yellow" href="">JWT</a>.</p>
-            <a class="learn" href="#">Learn more ›</a>
-            <div class="code">
-                <div class="header"><i class="red button"></i><i class="yellow button"></i><i class="green button"></i></div>
-                <div class="body">
-                    <pre><code class="language-python">from tornado.web import Application
+            <div class="container area">
+                <h1>AUTHENTICATION</h1>
+                <p>Why keep doing authentication over and over again? bzz automates authentication against a myriad of OAUTH sources for your API using <a class="inline yellow" href="">JWT</a>.</p>
+                <a class="learn" href="#">Learn more ›</a>
+                <div class="code">
+                    <div class="header"><i class="red button"></i><i class="yellow button"></i><i class="green button"></i></div>
+                    <div class="body">
+                        <pre><code class="language-python">from tornado.web import Application
 from tornado.ioloop import IOLoop
 import bzz
 
@@ -140,6 +140,7 @@ app = Application(routes)
 bzz.AuthHive.configure(app)
 app.listen(8888)
 IOLoop.instance().start()</code></pre>
+                    </div>
                 </div>
             </div>
         </div>
