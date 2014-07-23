@@ -13,7 +13,7 @@ import sys
 from bzz.version import __version__
 try:
     from bzz.rest_handler import ModelRestHandler
-    from bzz.auth_handler import AuthenticationHandler, AuthenticationProvider
+    from bzz.auth_handler import AuthHandler, AuthHive, AuthProvider
 except ImportError:
     err = sys.exc_info()[1]
     print("%s. Probably setup.py" % err)

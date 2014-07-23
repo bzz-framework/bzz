@@ -8,6 +8,8 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
+import inspect
+import functools
 from datetime import datetime, timedelta
 
 import tornado.web
@@ -15,43 +17,72 @@ import tornado.gen as gen
 from tornado import ioloop
 from tornado import httpclient
 
-# import bzz.signals as signals
+import bzz.signals as signals
 import bzz.utils as utils
 
 
-class AuthenticationHandler(tornado.web.RequestHandler):
+def authenticated(method):
+    """Decorate methods with this to require that the user be logged in.
+
+    If the user is not logged in, a 401 unauthorized status code will return.
+    """
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        authenticated, payload = AuthHandler._is_authenticated(self)
+        if authenticated:
+            AuthHandler._renew_authentication(self, payload)
+        else:
+            AuthHandler._set_unauthorized(self)
+        return method(self, *args, **kwargs)
+    return wrapper
+
+
+class AuthHive(object):
 
     @classmethod
-    def routes_for(
-            cls, provider, expiration=1200, secret_key='SECRET_KEY',
-            cookie_name='AUTH_TOKEN'):
+    def configure(cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN'):
+        app.authentication_options = {
+            'secret_key': secret_key,
+            'expiration': expiration,
+            'cookie_name': cookie_name,
+            'jwt': utils.Jwt(secret_key)
+        }
 
-        options = dict(
-            provider=provider, expiration=expiration, secret_key=secret_key,
-            cookie_name=cookie_name
+    @classmethod
+    def routes_for(cls, providers):
+
+        ensure_instance = lambda provider: (
+            provider() if inspect.isclass(provider) else provider
         )
-        routes = [
-            ('/authenticate/%s/' % provider.get_name(), cls, options)
-        ]
+        options = {
+            'providers': dict([
+                (provider.get_name(), ensure_instance(provider))
+                for provider in providers
+            ])
+        }
+        routes = [('/authenticate/', AuthHandler, options)]
 
         return routes
 
-    def initialize(self, provider, expiration, secret_key, cookie_name):
-        self.jwt = utils.Jwt(secret_key)
-        self.provider = provider
-        self.expiration = expiration
-        self.cookie_name = cookie_name
+
+class AuthHandler(tornado.web.RequestHandler):
+
+    def initialize(self, providers):
+        self.providers = providers
+        self.jwt = self.application.authentication_options['jwt']
+        self.expiration = self.application.authentication_options['expiration']
+        self.cookie_name = self.application.authentication_options['cookie_name']
 
     def get(self):
         '''
         Only returns true or false if is a valid authenticated request
         '''
+        authenticated, payload = AuthHandler._is_authenticated(self)
+        result = dict(authenticated=authenticated)
+        if authenticated:
+            result['user_data'] = payload['data']
         self.set_status(200)
-        user = self._get_authenticated_user()
-        if user:
-            self.write(dict(authenticated=True))
-        else:
-            self.write(dict(authenticated=False))
+        self.write(result)
 
     @gen.coroutine
     def post(self):
@@ -63,46 +94,57 @@ class AuthenticationHandler(tornado.web.RequestHandler):
         '''
         post_data = utils.loads(self.request.body)
         access_token = post_data.get('access_token')
+        provider_name = post_data.get('provider')
 
-        user = yield self._authenticate(access_token)
-        if user:
+        provider = self.providers.get(provider_name, None)
+        if provider is None:
+            AuthHandler._set_unauthorized(self)
+
+        user_data = yield provider.authenticate(access_token)
+        if user_data:
             payload = dict(
-                sub=user['id'],
-                iss=self.provider.get_name(),
+                sub=user_data['id'],
+                data=user_data,
+                iss=provider_name,
                 token=access_token,
                 iat=datetime.utcnow(),
                 exp=datetime.utcnow() + timedelta(seconds=self.expiration)
             )
             auth_token = self.jwt.encode(payload)
 
+            signals.authorized_user.send(provider_name, user_data=user_data)
             self.set_cookie(self.cookie_name, auth_token)
             self.write(dict(authenticated=True))
         else:
-            self.__set_unauthorized()
+            signals.unauthorized_user.send(provider_name)
+            AuthHandler._set_unauthorized(self)
 
-    def __set_unauthorized(self):
-        self.set_status(401, reason='Unauthorized')
-        self.finish()
+    @classmethod
+    def _set_unauthorized(cls, handler):
+        handler.set_status(401, reason='Unauthorized')
+        raise tornado.web.Finish()
 
-    def _is_authenticated(self):
-        return self.jwt.try_to_decode(self.get_cookie(self.cookie_name))
+    @classmethod
+    def _is_authenticated(cls, handler):
+        jwt = handler.application.authentication_options['jwt']
+        cookie_name = handler.application.authentication_options['cookie_name']
+        return jwt.try_to_decode(handler.get_cookie(cookie_name))
 
-    def _get_authenticated_user(self):
-        authenticated, payload = self._is_authenticated()
-        if authenticated:
-            user_id = payload['sub']
-            return {'id': user_id}
-        else:
-            return None
+    @classmethod
+    def _renew_authentication(cls, handler, payload):
+        payload.update(dict(
+            iat=datetime.utcnow(),
+            exp=datetime.utcnow() + timedelta(
+                seconds=handler.application.authentication_options['expiration']
+            )
+        ))
+        cookie_name = handler.application.authentication_options['cookie_name']
+        jwt = handler.application.authentication_options['jwt']
+        token = jwt.encode(payload)
+        handler.set_cookie(cookie_name, token)
 
-    @gen.coroutine
-    def _authenticate(self, access_token):
-        oauth_user = yield self.provider.authenticate(access_token)
-        # TODO: send signal to get or create persisted user
-        raise gen.Return(oauth_user)
 
-
-class AuthenticationProvider(object):
+class AuthProvider(object):
 
     def __init__(self, io_loop=None):
         if not io_loop:
@@ -116,10 +158,11 @@ class AuthenticationProvider(object):
 
     @gen.coroutine
     def authenticate(self, access_token):
-        raise NotImplementedError()
+        raise NotImplementedError('Provider.authenticate method must be implemented')
 
 
-class GoogleProvider(AuthenticationProvider):
+class GoogleProvider(AuthProvider):
+    API_URL = 'https://www.googleapis.com/oauth2/v1/userinfo?access_token={}'
 
     @gen.coroutine
     def authenticate(self, access_token):
@@ -133,7 +176,8 @@ class GoogleProvider(AuthenticationProvider):
         {
             id: "1234567890abcdef",
             email: "...@gmail.com",
-            fullname: "Ricardo L. Dani",
+            name: "Ricardo L. Dani",
+            provider: "google"
         }
         '''
 
@@ -144,20 +188,19 @@ class GoogleProvider(AuthenticationProvider):
             if not body.get('error'):
                 raise gen.Return({
                     'email': body.get("email"),
-                    'fullname': body.get("name"),
-                    'id': body.get("id")
+                    'name': body.get("name"),
+                    'id': body.get("id"),
+                    'provider': self.get_name()
                 })
 
         raise gen.Return(None)
 
     @gen.coroutine
     def _fetch_userinfo(self, access_token):
-        google_api_url = 'https://www.googleapis.com/oauth2/v1/userinfo'
-        url = '%s?access_token=%s' % (google_api_url, access_token)
-
         try:
-            response = yield self.http_client.fetch(url)
+            response = yield self.http_client.fetch(
+                self.API_URL.format(access_token)
+            )
         except httpclient.HTTPError as e:
             response = e.response
-
         raise gen.Return(response)
