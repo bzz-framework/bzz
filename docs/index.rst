@@ -42,7 +42,7 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
 
    import tornado.web
    from mongoengine import *
-   from bzz.mongoengine_handler import MongoEngineRestHandler
+   import bzz
 
    server = None
 
@@ -65,7 +65,6 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
       try:
           assert response.code == 200
       finally:
-          server.stop()
           io_loop.stop()
 
    # bzz includes a helper to return the routes for your models
@@ -75,7 +74,7 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    # * POST with user-id - Creates new instance
    # * PUT with user-id - Updates instance
    # * DELETE with user-id - Removes instance
-   routes = MongoEngineRestHandler.routes_for('mongoengine', User)
+   routes = bzz.ModelHive.routes_for('mongoengine', User)
 
    # Make sure our test is clean
    User.objects.delete()

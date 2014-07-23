@@ -39,7 +39,7 @@ Let's create a new server to save users:
 
    import tornado.web
    from mongoengine import *
-   from bzz.mongoengine_handler import MongoEngineRestHandler
+   import bzz
 
    server = None
 
@@ -62,12 +62,11 @@ Let's create a new server to save users:
       try:
          assert response.code == 200, response.code
       finally:
-         server.stop()
          io_loop.stop()
 
    # bzz includes a helper to return the routes for your models
    # returns a list of routes that match '/user/<user-id>/' and allows for:
-   routes = MongoEngineRestHandler.routes_for('mongoengine', User)
+   routes = bzz.ModelHive.routes_for('mongoengine', User)
 
    User.objects.delete()
    application = tornado.web.Application(routes)

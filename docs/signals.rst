@@ -20,7 +20,7 @@ bzz uses the blinker library for signals. Using them is very simple:
 
    import tornado.web
    from mongoengine import *
-   from bzz.mongoengine_handler import MongoEngineRestHandler
+   import bzz
    from bzz.signals import post_create_instance
 
    server = None
@@ -45,14 +45,13 @@ bzz uses the blinker library for signals. Using them is very simple:
       try:
           assert instance.name == 'Bernardo Heynemann'
       finally:
-          server.stop()
           io_loop.stop()
 
    # just connect the signal to the event handler
    post_create_instance.connect(handle_post_instance_created)
 
    # get routes for our model
-   routes = MongoEngineRestHandler.routes_for('mongoengine', User)
+   routes = bzz.ModelHive.routes_for('mongoengine', User)
 
    # Make sure our test is clean
    User.objects.delete()

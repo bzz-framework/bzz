@@ -32,12 +32,12 @@ MockedRoutes expects a list of tuples with
 .. testcode:: mocked_routes_example
 
    import tornado.web
-   from bzz.mocked_routes import MockedRoutes
+   import bzz
 
    server = None
 
    #first create the routes
-   mocked_routes = MockedRoutes([
+   mocked_routes = bzz.MockHive([
       ('GET', '/much/api', dict(body='much api')),
       ('POST', '/much/api'),
       ('*', '/much/match', dict(body='such match')),
@@ -55,7 +55,6 @@ MockedRoutes expects a list of tuples with
          assert response.code == 200, response.code
          assert response.body == six.b('much api'), response.body
       finally:
-         server.stop()
          io_loop.stop()
 
    def get_route():
