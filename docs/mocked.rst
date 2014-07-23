@@ -1,11 +1,14 @@
-MockedRoutes
-============
+Mocked Responses
+================
 
-bzz comes with an API mock.
-For mocking responses in url's before implementing
+Most of the time creating a new API is a time-consuming task. Other teams (or people) might be depending on your API to create clients or the application that will consume your data.
 
-Using the MockedRoutes
---------------------------------
+Usually you'd give them the contract of your API (or worse, they'd have to wait until your API is ready). bzz comes packed with a mocked responses API that allows you to easily craft a mock API that can be used by clients/partners/teams/aliens.
+
+This way you can keep focus in the development of your API, while at the same time allowing people to work with what will eventually be replaced by the real API.
+
+Using Mocked Responses
+----------------------
 
 .. autoclass:: bzz.mocked_routes.MockedRoutes
 .. automethod:: bzz.mocked_routes.MockedRoutes.handlers

@@ -12,6 +12,7 @@ import tornado.web
 import tornado.gen as gen
 from six.moves.urllib.parse import unquote
 
+import bzz.core as core
 import bzz.signals as signals
 import bzz.utils as utils
 
@@ -22,6 +23,7 @@ AVAILABLE_HANDLERS = {
 
 
 class ModelRestHandler(tornado.web.RequestHandler):
+
     @classmethod
     def routes_for(cls, handler, model, prefix='', resource_name=None):
         '''
@@ -31,7 +33,8 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
         * model is the Model class that you want routes for;
         * prefix is an optional argument that can be specified as means to include a prefix route (i.e.: '/api');
-        * resource_name is an optional argument that can be specified to change the route name. If no resource_name specified the route name is the __class__.__name__ for the specified model with underscores instead of camel case.
+        * resource_name is an optional argument that can be specified to change the route name. If no resource_name specified the
+          route name is the __class__.__name__ for the specified model with underscores instead of camel case.
 
         If you specify a prefix of '/api/' as well as resource_name of 'people' your route would be similar to:
 
@@ -48,16 +51,67 @@ class ModelRestHandler(tornado.web.RequestHandler):
         if prefix:
             details_regex = ('/%s' % prefix.strip('/')) + details_regex
 
+        tree = handler_class.get_tree(model)
+
+        options = dict(model=model, name=name, prefix=prefix, tree=tree)
         routes = [
-            (details_regex % name, handler_class, dict(model=model, name=name, prefix=prefix))
+            (details_regex % name, handler_class, options)
         ]
 
         return routes
 
-    def initialize(self, model, name, prefix):
+    @classmethod
+    def get_tree(cls, model, node=None):
+        if node is None:
+            node = core.Node(cls.get_model_name(model), is_root=True)
+
+        node.target_name = cls.get_model_collection(model)
+        node.is_multiple = False
+
+        if node.target_name is None:
+            node.target_name = node.slug
+
+        node.model_type = model
+
+        cls.parse_children(model, node.children)
+
+        return node
+
+    @classmethod
+    def parse_children(cls, model, collection):
+        for field_name, field in cls.get_model_fields(model).items():
+            child_node = core.Node(field_name)
+            collection[field_name] = child_node
+
+            child_node.is_multiple = cls.is_list_field(field)
+            child_node.target_name = cls.get_field_target_name(field)
+            child_node.allows_create_on_associate = \
+                cls.allows_create_on_associate(field)
+            child_node.is_lazy_loaded = \
+                cls.is_lazy_loaded(field)
+
+            child_node.model_type = cls.get_model(field)
+
+            if child_node.model_type is not None:
+                cls.parse_children(child_node.model_type, child_node.children)
+
+    def get_node(self, path):
+        if '.' not in path:
+            return self.tree.get(path, None)
+
+        node = self.tree
+        for item in path.split('.'):
+            node = node.get(item, None)
+            if node is None:
+                return None
+
+        return node
+
+    def initialize(self, model, name, prefix, tree):
         self.model = model
         self.name = name
         self.prefix = prefix
+        self.tree = tree
 
     def write_json(self, obj):
         self.set_header("Content-Type", "application/json")
@@ -82,17 +136,22 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
         return [args[0]] + items
 
+    @classmethod
+    def get_path_from_args(cls, args):
+        path = ".".join([arg.split('/')[0] for arg in args[1:]])
+        return path
+
     @gen.coroutine
     def get(self, *args, **kwargs):
         args = self.parse_arguments(args)
-        is_multiple = yield self.is_multiple(args)
-        model_type = yield self.get_model_from_path(args)
+        path = self.get_path_from_args(args)
+        node = self.tree.find_by_path(path)
 
-        if is_multiple and '/' not in args[-1]:
-            signals.pre_get_list.send(model_type, arguments=args, handler=self)
+        if (node.is_root or node.is_multiple) and '/' not in args[-1]:
+            signals.pre_get_list.send(node.model_type, arguments=args, handler=self)
             yield self.handle_get_list(args)
         else:
-            signals.pre_get_instance.send(model_type, arguments=args, handler=self)
+            signals.pre_get_instance.send(node.model_type, arguments=args, handler=self)
             yield self.handle_get_one(args)
 
     @gen.coroutine
@@ -235,7 +294,9 @@ class ModelRestHandler(tornado.web.RequestHandler):
         _, parent = yield self.get_instance_property(root, args[1:])
         request_data = self.get_request_data()
         model_type = self.get_property_model(parent, args[-1])
-        instance = yield self.get_instance(request_data['item'], model=model_type)
+        key = "%s[]" % args[-1]
+        value = request_data[key]
+        instance = yield self.get_instance(value, model=model_type)
         yield self.associate_instance(root, args[-1], instance)
         raise gen.Return(instance)
 
@@ -279,12 +340,26 @@ class ModelRestHandler(tornado.web.RequestHandler):
         root = yield self.get_instance(pk)
         model_type = root.__class__
         instance = parent = None
+
+        if not self.validate_update_request_data(root, model_type):
+            self.send_error(400, reason="Invalid multiple field")
+            raise tornado.web.Finish()
+
         if len(args) > 1:
             instance, parent = yield self.get_instance_property(root, args[1:])
             model_type = instance.__class__
             property_name, pk = args[-1].split('/')
         instance, updated = yield self.update_instance(pk, self.get_request_data(), model_type, instance, parent)
         raise gen.Return([instance, updated, model_type])
+
+    def validate_update_request_data(self, root, model_type):
+        data = self.get_request_data()
+
+        for key, value in data.items():
+            if key.endswith('[]'):
+                return False
+
+        return True
 
     @gen.coroutine
     def delete(self, *args, **kwargs):
@@ -359,7 +434,14 @@ class ModelRestHandler(tornado.web.RequestHandler):
                 else:
                     key, value = 'item', item
 
-                data[key] = unquote(value)
+                if key in data:
+                    if not isinstance(data[key], (tuple, list)):
+                        old = data[key]
+                        data[key] = []
+                        data[key].append(old)
+                    data[key].append(unquote(value))
+                else:
+                    data[key] = unquote(value)
         else:
             for arg in list(self.request.arguments.keys()):
                 data[arg] = self.get_argument(arg)
