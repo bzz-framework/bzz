@@ -17,7 +17,6 @@ class MockedRoutesHandler(tornado.web.RequestHandler):
         self.handler_methods = kwargs.pop('handler_methods')
         super(MockedRoutesHandler, self).__init__(*args, **kwargs)
 
-
     def prepare(self):
         if self.request.method in self.handler_methods or '*' in self.handler_methods:
             response = self.handler_methods.get(self.request.method, None) or self.handler_methods.get('*')
@@ -39,18 +38,15 @@ class MockedRoutesHandler(tornado.web.RequestHandler):
             self.finish()
 
 
-class MockedRoutes(object):
+class MockHive(object):
     def __init__(self, routes_tuple):
         self.routes_tuple = routes_tuple
         self.routes = OrderedDict()
-        # self.tornado_routes = []
-
 
     def handlers(self):
         """
         Returns a tuples list of paths, tornado ready
         """
-        tornado_routes = []
         for route in self.routes_tuple:
             if not route[1] in self.routes:
                 self.routes[route[1]] = {}
@@ -63,6 +59,4 @@ class MockedRoutes(object):
 
             self.routes[route[1]][route[0]] = result
 
-
         return [(route, MockedRoutesHandler, dict(handler_methods=methods)) for route, methods in self.routes.items()]
-

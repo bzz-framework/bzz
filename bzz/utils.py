@@ -68,16 +68,16 @@ def dumps(instance):
 
 class Jwt(object):
     '''Json Web Tokens encoding/decoding utility class.
-    Usage:
-    >>> jwt = Jwt('SECRET')
-    >>> token = jwt.encode(dict(sub='user@email.com', iss='provider',
-                           token='123456789', iat=now(),
-                           exp=datetime_expiration))
-    >>> jwt.decode(token)
-    {'sub':'user@email.com', 'iss':'provider', 'token':'123456789',
-     'iat': <datetime>, 'exp': <datetime>}
-    >>> jwt.try_to_decode('invalid-token')
-    (False, None)
+Usage:
+>>> now = datetime.now()
+>>> tokenizer = Jwt('SECRET')
+>>> payload = dict(sub='user@email.com', iss='provider', token='123456789', iat=now, exp=120)
+>>> token = tokenizer.encode(payload)
+>>> tokenizer.decode(token)
+{'sub':'user@email.com', 'iss':'provider', 'token':'123456789',
+ 'iat': <datetime>, 'exp': <datetime>}
+>>> tokenizer.try_to_decode('invalid-token')
+(False, None)
     '''
 
     def __init__(self, secret, algo='HS512'):

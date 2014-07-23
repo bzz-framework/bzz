@@ -14,7 +14,7 @@ import tornado.gen as gen
 import mongoengine
 import bson
 
-import bzz.rest_handler as bzz
+import bzz.model as bzz
 
 
 class MongoEngineRestHandler(bzz.ModelRestHandler):

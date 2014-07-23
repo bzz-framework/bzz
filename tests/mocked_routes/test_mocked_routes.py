@@ -8,22 +8,20 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
-import tornado.web
 import cow.server as server
 from preggy import expect
 import tornado.testing as testing
 import derpconf.config as config
-from nose_focus import focus
 from tornado.httpclient import HTTPError
 
 import tests.base as base
-import bzz.mocked_routes as mocked_routes
+import bzz
 
 
 class TestServer(server.Server):
 
     def get_handlers(self):
-        routes = mocked_routes.MockedRoutes([
+        routes = bzz.MockHive([
             ('GET', '/much/api', dict(body='much api')),
             ('POST', '/much/api'),
             ('*', '/much/match', dict(body='such match')),
@@ -35,6 +33,7 @@ class TestServer(server.Server):
             ('*', '/much/come/first', dict(body='NOT FIRTH')),
         ])
         return routes.handlers()
+
 
 class TestMockedRoutes(base.ApiTestCase):
     def get_config(self):
@@ -112,7 +111,7 @@ class TestMockedRoutes(base.ApiTestCase):
     def test_can_set_error(self):
         err = expect.error_to_happen(HTTPError)
         with err:
-            response = yield self.http_client.fetch(
+            yield self.http_client.fetch(
                 self.get_url('/much/error'),
                 method='GET'
             )
@@ -122,7 +121,7 @@ class TestMockedRoutes(base.ApiTestCase):
     def test_cant_delete_exactly_match(self):
         err = expect.error_to_happen(HTTPError)
         with err:
-            response = yield self.http_client.fetch(
+            yield self.http_client.fetch(
                 self.get_url('/much/api'),
                 method='DELETE'
             )

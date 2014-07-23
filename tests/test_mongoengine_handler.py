@@ -41,12 +41,12 @@ class TestServer(server.Server):
 
     def get_handlers(self):
         routes = [
-            bzz.ModelRestHandler.routes_for('mongoengine', models.User),
-            bzz.ModelRestHandler.routes_for('mongoengine', models.OtherUser),
-            bzz.ModelRestHandler.routes_for('mongoengine', models.Parent),
-            bzz.ModelRestHandler.routes_for('mongoengine', models.Parent2),
-            bzz.ModelRestHandler.routes_for('mongoengine', models.Team),
-            bzz.ModelRestHandler.routes_for('mongoengine', models.Student),
+            bzz.ModelHive.routes_for('mongoengine', models.User),
+            bzz.ModelHive.routes_for('mongoengine', models.OtherUser),
+            bzz.ModelHive.routes_for('mongoengine', models.Parent),
+            bzz.ModelHive.routes_for('mongoengine', models.Parent2),
+            bzz.ModelHive.routes_for('mongoengine', models.Team),
+            bzz.ModelHive.routes_for('mongoengine', models.Student),
         ]
         return [route for route_list in routes for route in route_list]
 

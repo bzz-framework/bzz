@@ -28,46 +28,48 @@ RESPONSE_400 = '<html><title>400:badrequest</title><body>400:badrequest</body></
 
 class MongoEngineEndToEndTestCase(base.ApiTestCase):
     def __get_test_data(self):
+        to_json = lambda body: load_json(body)
+
         return [
-            ('GET', '/user', dict(), 200, lambda body: load_json(body), []),
+            ('GET', '/user', {}, 200, to_json, []),
             ('POST', '/user', dict(body="name=test%20user&age=32"), 200, None, 'OK'),
-            ('GET', '/user', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test user", age=32)),
-            ('GET', '/user/test%20user', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test user", age=32)),
+            ('GET', '/user', {}, 200, to_json, self.__assert_user_data(name="test user", age=32)),
+            ('GET', '/user/test%20user', {}, 200, to_json, self.__assert_user_data(name="test user", age=32)),
             ('PUT', '/user/test%20user', dict(body="age=31"), 200, None, 'OK'),
-            ('GET', '/user/test%20user', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test user", age=31)),
+            ('GET', '/user/test%20user', {}, 200, to_json, self.__assert_user_data(name="test user", age=31)),
             ('POST', '/user', dict(body="name=test-user2&age=32"), 200, None, 'OK'),
-            ('DELETE', '/user/test-user2', dict(), 200, None, 'OK'),
-            ('GET', '/user', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
-            ('GET', '/team', dict(), 200, lambda body: load_json(body), []),
+            ('DELETE', '/user/test-user2', {}, 200, None, 'OK'),
+            ('GET', '/user', {}, 200, to_json, self.__assert_len(1)),
+            ('GET', '/team', {}, 200, to_json, []),
             ('POST', '/team', dict(body="code=team-1&owner=test%20user"), 200, None, 'OK'),
-            ('GET', '/team/team-1', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name="team-1", owner="test user")),
+            ('GET', '/team/team-1', {}, 200, to_json, self.__assert_team_data(name="team-1", owner="test user")),
             ('POST', '/user', dict(body="name=test-user3&age=32"), 200, None, 'OK'),
             ('PUT', '/team/team-1', dict(body="owner=test-user3"), 200, None, 'OK'),
             ('PUT', '/team/team-1', dict(body="members[]=test-user3"), 400, None, RESPONSE_400),
-            ('GET', '/team/team-1', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name='team-1', member_count=0)),
+            ('GET', '/team/team-1', {}, 200, to_json, self.__assert_team_data(name='team-1', member_count=0)),
             ('POST', '/team', dict(body="code=team-2&owner=test%20user&members[]=test%20user"), 200, None, 'OK'),
-            ('GET', '/team/team-2', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name='team-2', member_count=1)),
-            ('POST', '/team', dict(body="code=team-3&owner=test%20user&members[]=test%20user&members[]=test-user3"), 200, None, 'OK'),
-            ('GET', '/team/team-3', dict(), 200, lambda body: load_json(body), self.__assert_team_data(name='team-3', member_count=2)),
-            ('DELETE', '/team/team-2', dict(), 200, None, 'OK'),
-            ('DELETE', '/team/team-3', dict(), 200, None, 'OK'),
-            ('GET', '/team', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
+            ('GET', '/team/team-2', {}, 200, to_json, self.__assert_team_data(name='team-2', member_count=1)),
+            ('POST', '/team', dict(body="code=team-3&owner=test%20user&members[]=test%20user&members[]=test-user3"),
+                200, None, 'OK'),
+            ('GET', '/team/team-3', {}, 200, to_json, self.__assert_team_data(name='team-3', member_count=2)),
+            ('DELETE', '/team/team-2', {}, 200, None, 'OK'),
+            ('DELETE', '/team/team-3', {}, 200, None, 'OK'),
+            ('GET', '/team', {}, 200, to_json, self.__assert_len(1)),
             ('POST', '/team/team-1/members', dict(body="members[]=test%20user"), 200, None, 'OK'),
-            ('GET', '/team/team-1/members', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
+            ('GET', '/team/team-1/members', {}, 200, to_json, self.__assert_len(1)),
             ('POST', '/user', dict(body="name=test-user4&age=32"), 200, None, 'OK'),
             ('POST', '/team/team-1/members', dict(body="members[]=test-user4"), 200, None, 'OK'),
-            ('DELETE', '/team/team-1/members/test-user4', dict(), 200, None, 'OK'),
+            ('DELETE', '/team/team-1/members/test-user4', {}, 200, None, 'OK'),
             ('PUT', '/team/team-1/members/test-user4', dict(body=""), 400, None, RESPONSE_400),
-            ('GET', '/team/team-1/members', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
-            ('GET', '/user/test-user4', dict(), 200, lambda body: load_json(body), self.__assert_user_data(name="test-user4", age=32)),
+            ('GET', '/team/team-1/members', {}, 200, to_json, self.__assert_len(1)),
+            ('GET', '/user/test-user4', {}, 200, to_json, self.__assert_user_data(name="test-user4", age=32)),
             ('POST', '/team/team-1/projects', dict(body="name=project-1&module.name=module-name"), 200, None, 'OK'),
-            ('GET', '/team/team-1/projects', dict(), 200, lambda body: load_json(body), self.__assert_len(1)),
-            ('GET', '/team/team-1/projects/project-1', dict(), 200, lambda body: load_json(body), self.__assert_project_data(name="project-1", module="module-name")),
-            ('GET', '/team/team-1/projects/project-1/module', dict(), 200, lambda body: load_json(body), self.__assert_module_data(name="module-name")),
+            ('GET', '/team/team-1/projects', {}, 200, to_json, self.__assert_len(1)),
+            ('GET', '/team/team-1/projects/project-1', {}, 200, to_json,
+                self.__assert_project_data(name="project-1", module="module-name")),
+            ('GET', '/team/team-1/projects/project-1/module', {}, 200, to_json, self.__assert_module_data(name="module-name")),
         ]
 
-    from nose_focus import focus
-    @focus
     def test_end_to_end_flow(self):
         data = self.__get_test_data()
 
@@ -250,7 +252,7 @@ class TestServer(server.Server):
 
     def get_handlers(self):
         routes = [
-            bzz.ModelRestHandler.routes_for('mongoengine', EndToEndUser, resource_name="user"),
-            bzz.ModelRestHandler.routes_for('mongoengine', EndToEndTeam, resource_name="team"),
+            bzz.ModelHive.routes_for('mongoengine', EndToEndUser, resource_name="user"),
+            bzz.ModelHive.routes_for('mongoengine', EndToEndTeam, resource_name="team"),
         ]
         return [route for route_list in routes for route in route_list]

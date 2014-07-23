@@ -10,10 +10,11 @@
 
 import sys
 
-from bzz.version import __version__
+from bzz.version import __version__  # NOQA
 try:
-    from bzz.rest_handler import ModelRestHandler
-    from bzz.auth_handler import AuthHandler, AuthHive, AuthProvider
+    from bzz.model import ModelHive  # NOQA
+    from bzz.mock import MockHive  # NOQA
+    from bzz.auth import AuthHive, AuthProvider, authenticated  # NOQA
 except ImportError:
     err = sys.exc_info()[1]
     print("%s. Probably setup.py" % err)

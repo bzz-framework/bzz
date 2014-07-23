@@ -22,8 +22,7 @@ AVAILABLE_HANDLERS = {
 }
 
 
-class ModelRestHandler(tornado.web.RequestHandler):
-
+class ModelHive(object):
     @classmethod
     def routes_for(cls, handler, model, prefix='', resource_name=None):
         '''
@@ -60,6 +59,8 @@ class ModelRestHandler(tornado.web.RequestHandler):
 
         return routes
 
+
+class ModelRestHandler(tornado.web.RequestHandler):
     @classmethod
     def get_tree(cls, model, node=None):
         if node is None:

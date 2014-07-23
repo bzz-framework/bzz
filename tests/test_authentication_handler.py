@@ -23,7 +23,7 @@ import bzz
 import bzz.signals as signals
 import bzz.utils as utils
 import tests.base as base
-from bzz.auth_handler import GoogleProvider
+from bzz.auth import GoogleProvider
 
 
 def load_json(json_string):
@@ -47,7 +47,7 @@ class MockUnauthorizedProvider(bzz.AuthProvider):
 
 class TestAuthHandler(RequestHandler):
 
-    @bzz.auth_handler.authenticated
+    @bzz.authenticated
     def get(self):
         self.write('OK')
 
@@ -79,12 +79,12 @@ class AuthHandlerTestCase(base.ApiTestCase):
 
     def get_app(self):
         app = super(AuthHandlerTestCase, self).get_app()
-        config = {
-            'cookie_name': 'TEST_AUTH_COOKIE',
-            'secret_key': 'TEST_SECRET_KEY',
-            'expiration': 1200
-        }
-        bzz.AuthHive.configure(app, **config)
+        bzz.AuthHive.configure(
+            app,
+            cookie_name='TEST_AUTH_COOKIE',
+            secret_key='TEST_SECRET_KEY',
+            expiration=1200
+        )
         return app
 
     def get_server(self):
@@ -92,9 +92,12 @@ class AuthHandlerTestCase(base.ApiTestCase):
         self.server = TestServer(config=cfg, io_loop=self.io_loop)
         return self.server
 
-    def mock_auth_cookie(
-            self, user_id, provider, data={}, token='12345',
-            expiration=datetime(year=5000, month=11, day=30)):
+    def mock_auth_cookie(self, user_id, provider, data=None, token='12345', expiration=None):
+        if data is None:
+            data = {}
+
+        if expiration is None:
+            expiration = datetime(year=5000, month=11, day=30)
 
         jwt = self.server.application.authentication_options['jwt']
         token = jwt.encode({
@@ -235,7 +238,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
             expect(provider).to_equal('google')
             expect(user_data).to_equal({
                 "provider": "google",
-                "email":"test@gmail.com", "name":"Teste", "id":"56789"
+                "email": "test@gmail.com", "name": "Teste", "id": "56789"
             })
 
         with patch.object(GoogleProvider, '_fetch_userinfo') as provider_mock:
@@ -281,20 +284,18 @@ class AuthHandlerTestCase(base.ApiTestCase):
             expect(response.code).to_equal(401)
             expect(test_result).to_include('provider')
 
-    from nose_focus import focus
-    @focus
     @testing.gen_test
     def test_can_make_a_request_in_a_decorated_method_as_authenticated(self):
         response = yield self.http_client.fetch(
             self.get_url('/test_authentication/'),
-            headers={'Cookie': self.mock_auth_cookie(0, 'mock', data={'id': 0})}
+            headers={'Cookie': self.mock_auth_cookie(
+                user_id=0, provider='mock', data={'id': 0}
+            )}
         )
 
         expect(response.code).to_equal(200)
         expect(response.body).to_equal('OK')
 
-    from nose_focus import focus
-    @focus
     @testing.gen_test
     def test_cant_make_a_request_in_a_decorated_method_as_anonymous(self):
         try:
@@ -306,4 +307,3 @@ class AuthHandlerTestCase(base.ApiTestCase):
 
         expect(response.code).to_equal(401)
         expect(response.reason).to_equal('Unauthorized')
-
