@@ -26,13 +26,11 @@ post_opt = {
     },
     'status': 203
 }
-mocked_routes = bzz.MockHive([
+mocked_routes = bzz.MockHive.routes_for([
   ('GET', '/sample', get_opt),
   ('POST', '/sample', post_opt),
 ])
-app = Application(
-    mocked_routes.handlers()
-)
+app = Application(mocked_routes)
 app.listen(8888)
 IOLoop.instance().start()</code></pre></div></div></div><div class="container area"><h1>AUTHENTICATION</h1><p>Why keep doing authentication over and over again? bzz automates authentication against a myriad of OAUTH sources for your API using <a class="inline yellow" href="">JWT</a>.</p><a class=learn href=#>Learn more ›</a><div class=code><div class=header><i class="red button"></i><i class="yellow button"></i><i class="green button"></i></div><div class=body><pre><code class=language-python>from tornado.web import Application
 from tornado.ioloop import IOLoop

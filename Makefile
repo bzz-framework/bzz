@@ -1,3 +1,7 @@
+setup:
+	@npm install .
+	@bower install
+
 release:
 	@grunt build
 	@rm -rf index.html ./scripts ./styles ./images ./robots.txt
