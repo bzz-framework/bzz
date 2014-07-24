@@ -42,3 +42,4 @@ virtualenv==1.11.6
 webassets==0.10.1
 wsgiref==0.1.2
 yanc==0.2.4
+-e git+git@https://github.com/heynemann/bzz.git@0e7741ce7a96ab627228422cf72238754a480ea4#egg=bzz-master
