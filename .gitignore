@@ -55,3 +55,7 @@ cover/
 .ipynb_checkpoints/
 *.ipynb
 .noseids
+.sass-cache
+.tmp
+bower_components
+node_modules
