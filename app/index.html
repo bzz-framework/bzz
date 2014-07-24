@@ -20,7 +20,6 @@
         <!-- build:js scripts/vendor/modernizr.js -->
         <script src="../bower_components/modernizr/modernizr.js"></script>
         <!-- endbuild -->
-
     </head>
     <body>
         <!-- build:js scripts/vendor.js -->
@@ -104,13 +103,11 @@ post_opt = {
     },
     'status': 203
 }
-mocked_routes = bzz.MockHive([
+mocked_routes = bzz.MockHive.routes_for([
   ('GET', '/sample', get_opt),
   ('POST', '/sample', post_opt),
 ])
-app = Application(
-    mocked_routes.handlers()
-)
+app = Application(mocked_routes)
 app.listen(8888)
 IOLoop.instance().start()</code></pre>
                     </div>
