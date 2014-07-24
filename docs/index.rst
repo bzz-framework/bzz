@@ -74,7 +74,12 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    # * POST with user-id - Creates new instance
    # * PUT with user-id - Updates instance
    # * DELETE with user-id - Removes instance
-   routes = bzz.ModelHive.routes_for('mongoengine', User)
+   routes = [
+       bzz.ModelHive.routes_for('mongoengine', User)
+       # and your other routes
+   ]
+
+   routes = bzz.flatten(routes)  # making sure tornado gets the correct routes
 
    # Make sure our test is clean
    User.objects.delete()
