@@ -29,6 +29,16 @@ all_cap_re = re.compile('([a-z0-9])([A-Z])')
 
 
 def flatten(routes):
+    '''
+    Gets a list of routes that includes hive-generated routes (model, auth or mock), as well as
+    user created routes and flatten the list to the format tornado expects.
+
+    Where:
+    * routes - list of routes created by bzz hives or by the user
+
+    Returns:
+    List of routes that a tornado app expects.
+    '''
     result = []
     for route_list in routes:
         if isinstance(route_list, core.RouteList):

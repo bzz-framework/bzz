@@ -90,15 +90,20 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    io_loop.add_timeout(1, create_user)
    io_loop.start()
 
+Flattening routes
+-----------------
+
+.. automethod:: bzz.utils.flatten
+
+Indices and tables
+==================
+
 .. toctree::
    :maxdepth: 2
 
    mongoengine
    mocked
    signals
-
-Indices and tables
-==================
 
 * :ref:`genindex`
 * :ref:`modindex`
