@@ -735,6 +735,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
 
         obj = utils.loads(response.body)
         expect(obj).to_length(2)
+        #import ipdb; ipdb.set_trace()
         expect(obj[0]['name']).to_equal('Bernardo Heynemann')
         expect(obj[0]['email']).to_equal('heynemann@gmail.com')
         expect(obj[1]['name']).to_equal('Rafael Floriano')

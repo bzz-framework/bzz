@@ -229,6 +229,16 @@ class EndToEndTeam(me.Document):
     def get_id_field_name(self):
         return EndToEndTeam.code
 
+    def to_dict(self):
+        return {
+            'code': self.code,
+            'owner': {
+                'name': self.owner.name
+            },
+            'members': [member.name for member in self.members],
+            'projects': self.projects
+        }
+
 
 class Project(NamedEmbeddedDocument):
     module = me.EmbeddedDocumentField("Module")

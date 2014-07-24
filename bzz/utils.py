@@ -61,7 +61,10 @@ def loads(data):
 
 def dumps(instance):
     if UJSON_ENABLED:
-        return json.dumps(instance)
+        try:
+            return json.dumps(instance)
+        except (OverflowError, UnicodeDecodeError):
+            import ipdb; ipdb.set_trace()
 
     return json.dumps(instance, default=default)
 

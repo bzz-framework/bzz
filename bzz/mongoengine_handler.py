@@ -12,9 +12,9 @@ import math
 
 import tornado.gen as gen
 import mongoengine
-import bson
 
 import bzz.model as bzz
+import bzz.utils as utils
 
 
 class MongoEngineRestHandler(bzz.ModelRestHandler):
@@ -86,7 +86,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
                     )
                 setattr(instance, key, value)
 
-        if not isinstance(instance, mongoengine.EmbeddedDocument):
+        if isinstance(instance, mongoengine.Document):
             instance.save()
 
         raise gen.Return(instance)
@@ -243,32 +243,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         if method:
             return method()
 
-        data = {}
-        for field_name in instance._fields.keys():
-            field = getattr(instance.__class__, field_name)
-
-            value = getattr(instance, field_name)
-
-            is_embedded = self.is_embedded_field(field)
-            is_ref = self.is_reference_field(field)
-            is_list = self.is_list_field(field)
-
-            if is_embedded or is_ref:
-                value = self.dump_instance(value)
-            elif is_list and (is_ref or is_embedded):
-                items = []
-                for obj in value:
-                    items.append(self.dump_instance(obj))
-
-                value = items
-            else:
-                value = field.to_mongo(value)
-
-            if isinstance(value, bson.ObjectId):
-                value = str(value)
-
-            data[field_name] = value
-        return data
+        return utils.loads(instance.to_json())
 
     @gen.coroutine
     def get_instance_id(self, instance):
