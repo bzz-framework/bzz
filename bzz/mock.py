@@ -11,6 +11,8 @@
 import tornado.web
 from collections import OrderedDict
 
+import bzz.core as core
+
 
 class MockedRoutesHandler(tornado.web.RequestHandler):
     def __init__(self, *args, **kwargs):
@@ -58,4 +60,9 @@ class MockHive(object):
 
             routes[route[1]][route[0]] = result
 
-        return [(route, MockedRoutesHandler, dict(handler_methods=methods)) for route, methods in routes.items()]
+        result = core.RouteList()
+        for route, methods in routes.items():
+            route_tuple = (route, MockedRoutesHandler, dict(handler_methods=methods))
+            result.append(route_tuple)
+
+        return result

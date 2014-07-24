@@ -49,7 +49,7 @@ class TestServer(server.Server):
             bzz.ModelHive.routes_for('mongoengine', models.Student),
             bzz.ModelHive.routes_for('mongoengine', models.CustomQuerySet),
         ]
-        return [route for route_list in routes for route in route_list]
+        return bzz.flatten(routes)
 
 
 class MongoEngineRestHandlerTestCase(base.ApiTestCase):

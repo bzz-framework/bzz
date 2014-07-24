@@ -11,6 +11,10 @@
 import slugify
 
 
+class RouteList(list):
+    pass
+
+
 class Node(object):
     def __init__(self, name, is_root=False):
         if not name:

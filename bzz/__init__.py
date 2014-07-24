@@ -15,6 +15,7 @@ try:
     from bzz.model import ModelHive  # NOQA
     from bzz.mock import MockHive  # NOQA
     from bzz.auth import AuthHive, AuthProvider, authenticated  # NOQA
+    from bzz.utils import flatten  # NOQA
 except ImportError:
     err = sys.exc_info()[1]
     print("%s. Probably setup.py" % err)

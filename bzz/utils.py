@@ -14,6 +14,8 @@ import calendar
 import datetime
 from six.moves import reduce
 
+import bzz.core as core
+
 try:
     import ujson as json
     UJSON_ENABLED = True
@@ -24,6 +26,18 @@ except ImportError:
 
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')
+
+
+def flatten(routes):
+    result = []
+    for route_list in routes:
+        if isinstance(route_list, core.RouteList):
+            for route in route_list:
+                result.append(route)
+        else:
+            result.append(route_list)
+
+    return tuple(result)
 
 
 def convert(name):

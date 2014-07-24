@@ -54,9 +54,11 @@ class ModelHive(object):
         tree = handler_class.get_tree(model)
 
         options = dict(model=model, name=name, prefix=prefix, tree=tree)
-        routes = [
+        routes = core.RouteList()
+
+        routes.append(
             (details_regex % name, handler_class, options)
-        ]
+        )
 
         return routes
 

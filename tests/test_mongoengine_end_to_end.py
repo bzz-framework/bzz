@@ -16,6 +16,7 @@ import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
 from preggy import expect
 import derpconf.config as config
+import tornado.web
 
 import bzz
 import bzz.signals as signals
@@ -254,6 +255,11 @@ class Module(NamedEmbeddedDocument):
         return Module.name
 
 
+class VersionHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write(bzz.__version__)
+
+
 class TestServer(server.Server):
     def get_plugins(self):
         return [
@@ -264,5 +270,6 @@ class TestServer(server.Server):
         routes = [
             bzz.ModelHive.routes_for('mongoengine', EndToEndUser, resource_name="user"),
             bzz.ModelHive.routes_for('mongoengine', EndToEndTeam, resource_name="team"),
+            ('/version', VersionHandler),
         ]
-        return [route for route_list in routes for route in route_list]
+        return bzz.flatten(routes)

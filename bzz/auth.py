@@ -19,6 +19,7 @@ from tornado import httpclient
 
 import bzz.signals as signals
 import bzz.utils as utils
+import bzz.core as core
 
 
 def authenticated(method):
@@ -60,7 +61,8 @@ class AuthHive(object):
                 for provider in providers
             ])
         }
-        routes = [('/authenticate/', AuthHandler, options)]
+        routes = core.RouteList()
+        routes.append(('/authenticate/', AuthHandler, options))
 
         return routes
 
