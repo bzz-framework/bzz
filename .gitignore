@@ -5,3 +5,9 @@ bower_components
 test/bower_components
 .DS_Store
 .bundle/
+.coverage
+.tox
+bzz.egg-info
+bzz/
+docs/
+tests/
