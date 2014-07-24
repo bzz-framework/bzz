@@ -83,3 +83,16 @@ class Person(mongoengine.Document):
 class Student(mongoengine.Document):
     code = mongoengine.StringField(required=True)
     person = mongoengine.ReferenceField(Person)
+
+
+class CustomQuerySet(mongoengine.Document):
+    prop = mongoengine.StringField()
+    meta = {'collection': 'custom_queryset'}
+
+    @classmethod
+    def get_list_queryset(cls, queryset, handler):
+        return queryset(prop='Bernardo Heynemann')
+
+    @classmethod
+    def get_instance_queryset(cls, model, queryset, instance_id, handler):
+        return queryset.filter(prop='Bernardo Heynemann')

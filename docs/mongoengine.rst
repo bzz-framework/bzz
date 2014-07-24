@@ -20,7 +20,7 @@ Using the MongoEngineRestHandler
 
 Just create your tornado server as usual, and call the `routes_for` method:
 
-.. automethod:: bzz.mongoengine_handler.MongoEngineRestHandler.routes_for
+.. automethod:: bzz.model.ModelHive.routes_for
 
 Let's create a new server to save users:
 

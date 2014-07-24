@@ -188,17 +188,25 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         if model is None:
             model = self.model
 
+        queryset = model.objects
+        if hasattr(model, 'get_instance_queryset'):
+            queryset = model.get_instance_queryset(model, queryset, instance_id, self)
+
         instance = None
         field = self.get_id_field_name(model)
 
         if instance_id:
-            instance = model.objects.filter(**{field: instance_id}).first()
+            instance = queryset.filter(**{field: instance_id}).first()
 
         raise gen.Return(instance)
 
     @gen.coroutine
     def get_list(self, items=None, per_page=20):
-        pages = int(math.ceil(self.model.objects.count() / float(per_page)))
+        queryset = self.model.objects
+        if hasattr(self.model, 'get_list_queryset'):
+            queryset = self.model.get_list_queryset(queryset, self)
+
+        pages = int(math.ceil(queryset.count() / float(per_page)))
         if pages == 0:
             raise gen.Return([])
 
@@ -215,7 +223,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         start = per_page * page
         stop = start + per_page
 
-        items = self.model.objects.all()[start:stop]
+        items = queryset.all()[start:stop]
         raise gen.Return(items)
 
     def dump_list(self, items, per_page=20):

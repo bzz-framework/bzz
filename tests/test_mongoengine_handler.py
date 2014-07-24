@@ -47,6 +47,7 @@ class TestServer(server.Server):
             bzz.ModelHive.routes_for('mongoengine', models.Parent2),
             bzz.ModelHive.routes_for('mongoengine', models.Team),
             bzz.ModelHive.routes_for('mongoengine', models.Student),
+            bzz.ModelHive.routes_for('mongoengine', models.CustomQuerySet),
         ]
         return [route for route_list in routes for route in route_list]
 
@@ -1119,3 +1120,40 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(embedded_doc.allows_create_on_associate).to_be_false()
         expect(embedded_doc.children).to_be_empty()
         expect(embedded_doc.required_children).to_be_empty()
+
+    @testing.gen_test
+    def test_can_get_user_list_with_custom_queryset(self):
+        models.CustomQuerySet.objects.delete()
+        user = models.CustomQuerySet(prop="Bernardo Heynemann")
+        user.save()
+
+        user = models.CustomQuerySet(prop="Rafael Floriano")
+        user.save()
+
+        response = yield self.http_client.fetch(
+            self.get_url('/custom_query_set'),
+        )
+
+        expect(response.code).to_equal(200)
+        expect(response.body).not_to_be_empty()
+
+        obj = load_json(response.body)
+        expect(obj).to_length(1)
+
+        expect(obj[0]['prop']).to_equal('Bernardo Heynemann')
+
+    @testing.gen_test
+    def test_can_get_user_instance_with_custom_queryset(self):
+        models.CustomQuerySet.objects.delete()
+        user = models.CustomQuerySet(prop="Bernardo Heynemann")
+        user.save()
+
+        user = models.CustomQuerySet(prop="Rafael Floriano")
+        user.save()
+
+        err = expect.error_to_happen(HTTPError)
+        with err:
+            yield self.http_client.fetch(
+                self.get_url('/custom_query_set/%s' % user.id),
+            )
+        expect(err.error.code).to_equal(404)
