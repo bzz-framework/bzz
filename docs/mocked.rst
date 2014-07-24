@@ -10,8 +10,8 @@ This way you can keep focus in the development of your API, while at the same ti
 Using Mocked Responses
 ----------------------
 
-.. autoclass:: bzz.mocked_routes.MockedRoutes
-.. automethod:: bzz.mocked_routes.MockedRoutes.handlers
+.. autoclass:: bzz.mock.MockHive
+.. automethod:: bzz.mock.MockHive.routes_for
 
 Let's create a new server with a few mocked routes.
 MockedRoutes expects a list of tuples with
@@ -37,7 +37,7 @@ MockedRoutes expects a list of tuples with
    server = None
 
    #first create the routes
-   mocked_routes = bzz.MockHive([
+   mocked_routes = bzz.MockHive.routes_for([
       ('GET', '/much/api', dict(body='much api')),
       ('POST', '/much/api'),
       ('*', '/much/match', dict(body='such match')),
@@ -46,8 +46,6 @@ MockedRoutes expects a list of tuples with
       ('GET', '/much/authentication', dict(body='WOW', cookies={'super': 'cow'})),
       ('GET', '/such/function', dict(body=lambda x: x.method)),
    ])
-
-   handlers = mocked_routes.handlers()
 
    def handle_api_response(response):
       # making sure we get the right route
@@ -65,7 +63,7 @@ MockedRoutes expects a list of tuples with
          callback=handle_api_response
       )
 
-   application = tornado.web.Application(handlers)
+   application = tornado.web.Application(mocked_routes)
    server = HTTPServer(application, io_loop=io_loop)
    server.listen(8891)
    io_loop.add_timeout(1, get_route)

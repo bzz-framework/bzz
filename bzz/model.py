@@ -30,6 +30,7 @@ class ModelHive(object):
 
         Where:
 
+        * handler is the actual handler you want to use (one of the bundled or your own handler);
         * model is the Model class that you want routes for;
         * prefix is an optional argument that can be specified as means to include a prefix route (i.e.: '/api');
         * resource_name is an optional argument that can be specified to change the route name. If no resource_name specified the

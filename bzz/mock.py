@@ -39,24 +39,23 @@ class MockedRoutesHandler(tornado.web.RequestHandler):
 
 
 class MockHive(object):
-    def __init__(self, routes_tuple):
-        self.routes_tuple = routes_tuple
-        self.routes = OrderedDict()
-
-    def handlers(self):
+    @classmethod
+    def routes_for(cls, routes_tuple):
         """
         Returns a tuples list of paths, tornado ready
         """
-        for route in self.routes_tuple:
-            if not route[1] in self.routes:
-                self.routes[route[1]] = {}
-            if not route[0] in self.routes[route[1]]:
-                self.routes[route[1]][route[0]] = {}
+        routes = OrderedDict()
+
+        for route in routes_tuple:
+            if not route[1] in routes:
+                routes[route[1]] = {}
+            if not route[0] in routes[route[1]]:
+                routes[route[1]][route[0]] = {}
             if len(route) > 2:
                 result = route[2]
             else:
                 result = {'body': '', 'status': 200}
 
-            self.routes[route[1]][route[0]] = result
+            routes[route[1]][route[0]] = result
 
-        return [(route, MockedRoutesHandler, dict(handler_methods=methods)) for route, methods in self.routes.items()]
+        return [(route, MockedRoutesHandler, dict(handler_methods=methods)) for route, methods in routes.items()]

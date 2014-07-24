@@ -21,7 +21,7 @@ import bzz
 class TestServer(server.Server):
 
     def get_handlers(self):
-        routes = bzz.MockHive([
+        routes = bzz.MockHive.routes_for([
             ('GET', '/much/api', dict(body='much api')),
             ('POST', '/much/api'),
             ('*', '/much/match', dict(body='such match')),
@@ -32,7 +32,7 @@ class TestServer(server.Server):
             ('GET', '/much/come/first', dict(body='FIRST')),
             ('*', '/much/come/first', dict(body='NOT FIRTH')),
         ])
-        return routes.handlers()
+        return routes
 
 
 class TestMockedRoutes(base.ApiTestCase):
