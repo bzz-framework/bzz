@@ -8,7 +8,6 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
-import inspect
 import functools
 from datetime import datetime, timedelta
 
@@ -81,12 +80,9 @@ class AuthHive(object):
 
         '''
 
-        ensure_instance = lambda provider: (
-            provider() if inspect.isclass(provider) else provider
-        )
         options = {
             'providers': dict([
-                (provider.get_name(), ensure_instance(provider))
+                (provider.get_name(), utils.ensure_instance(provider))
                 for provider in providers
             ])
         }

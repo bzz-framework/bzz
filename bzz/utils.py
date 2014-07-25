@@ -8,11 +8,13 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
-import jwt
+import inspect
 import re
 import calendar
 import datetime
 from six.moves import reduce
+
+import jwt
 
 import bzz.core as core
 
@@ -88,6 +90,11 @@ def dumps(instance):
         return json.dumps(instance)
 
     return json.dumps(instance, default=default)
+
+
+ensure_instance = lambda provider: (
+    provider() if inspect.isclass(provider) else provider
+)
 
 
 class Jwt(object):
