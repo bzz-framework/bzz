@@ -201,19 +201,23 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         raise gen.Return(instance)
 
     @gen.coroutine
-    def get_list(self, items=None, per_page=20):
+    def get_list(self, items=None, page=1, per_page=20, filters=None):
+        if filters is None:
+            filters = {}
+
         queryset = self.model.objects
         if hasattr(self.model, 'get_list_queryset'):
             queryset = self.model.get_list_queryset(queryset, self)
 
+        if filters:
+            queryset = queryset.filter(**dict([
+                (key.replace('.', '__'), value)
+                for key, value in filters.items()
+            ]))
+
         pages = int(math.ceil(queryset.count() / float(per_page)))
         if pages == 0:
             raise gen.Return([])
-
-        try:
-            page = int(self.get_argument('page', 1))
-        except ValueError:
-            page = 1
 
         if page > pages:
             page = pages
@@ -226,7 +230,7 @@ class MongoEngineRestHandler(bzz.ModelRestHandler):
         items = queryset.all()[start:stop]
         raise gen.Return(items)
 
-    def dump_list(self, items, per_page=20):
+    def dump_list(self, items):
         dumped = []
 
         for item in items:

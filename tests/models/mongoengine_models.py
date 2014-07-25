@@ -96,3 +96,8 @@ class CustomQuerySet(mongoengine.Document):
     @classmethod
     def get_instance_queryset(cls, model, queryset, instance_id, handler):
         return queryset.filter(prop='Bernardo Heynemann')
+
+
+class UniqueUser(mongoengine.Document):
+    name = mongoengine.StringField(unique=True)
+    meta = {'collection': 'unique_user'}

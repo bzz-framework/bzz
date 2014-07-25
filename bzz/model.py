@@ -181,7 +181,18 @@ class ModelRestHandler(tornado.web.RequestHandler):
             return
 
         if len(args) == 1:
-            items = yield self.get_list()
+            request_data = self.get_request_data()
+            try:
+                page = int(request_data.pop('page', 1))
+            except ValueError:
+                page = 1
+
+            try:
+                per_page = int(request_data.pop('per_page', 20))
+            except ValueError:
+                per_page = 20
+
+            items = yield self.get_list(page=page, per_page=per_page, filters=request_data)
             model_type = self.model
         else:
             success, items, parent = yield self.get_instance_from_args(args)

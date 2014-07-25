@@ -189,6 +189,20 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
         expect(obj).to_length(20)
 
     @testing.gen_test
+    def test_can_get_filtered_list(self):
+        models.User.objects.delete()
+        users = []
+        for i in range(30):
+            users.append(fix.UserFactory.create())
+
+        response = yield self.http_client.fetch(
+            self.get_url('/user/?slug=%s' % users[0].slug),
+        )
+        expect(response.code).to_equal(200)
+        obj = load_json(response.body)
+        expect(obj).to_length(1)
+
+    @testing.gen_test
     def test_can_update(self):
         user = fix.UserFactory.create()
         response = yield self.http_client.fetch(
