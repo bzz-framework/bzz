@@ -113,7 +113,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
     def test_cant_authenticate_with_invalid_provider(self):
         try:
             response = yield self.http_client.fetch(
-                self.get_url('/authenticate/'),
+                self.get_url('/auth/signin/'),
                 method='POST',
                 body=utils.dumps({
                     'access_token': '1234567890', 'provider': 'invalid'
@@ -135,7 +135,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
     @testing.gen_test
     def test_can_authenticate(self):
         response = yield self.http_client.fetch(
-            self.get_url('/authenticate/'),
+            self.get_url('/auth/signin/'),
             method='POST',
             body=utils.dumps({
                 'access_token': '1234567890', 'provider': 'mock'
@@ -151,7 +151,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
     def test_cant_authenticate(self):
         try:
             yield self.http_client.fetch(
-                self.get_url('/authenticate/'),
+                self.get_url('/auth/signin/'),
                 method='POST',
                 body=utils.dumps({
                     'access_token': '1234567890', 'provider': 'mockunauthorized'
@@ -168,7 +168,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
     @testing.gen_test
     def test_can_check_authenticated_request(self):
         response = yield self.http_client.fetch(
-            self.get_url('/authenticate/'),
+            self.get_url('/auth/me/'),
             headers={'Cookie': self.mock_auth_cookie(0, 'mock', data={'id': 0})}
         )
 
@@ -180,7 +180,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
     @testing.gen_test
     def test_can_check_not_authenticated_request(self):
         response = yield self.http_client.fetch(
-            self.get_url('/authenticate/')
+            self.get_url('/auth/me/')
         )
 
         expect(response.code).to_equal(200)
@@ -195,7 +195,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
             provider_mock.return_value = result
             try:
                 response = yield self.http_client.fetch(
-                    self.get_url('/authenticate/'), method='POST',
+                    self.get_url('/auth/signin/'), method='POST',
                     body=utils.dumps({
                         'access_token': 'INVALID-TOKEN', 'provider': 'google'
                     })
@@ -216,7 +216,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
             provider_mock.return_value = result
             try:
                 response = yield self.http_client.fetch(
-                    self.get_url('/authenticate/'), method='POST',
+                    self.get_url('/auth/signin/'), method='POST',
                     body=utils.dumps({
                         'access_token': 'VALID-TOKEN', 'provider': 'google'
                     })
@@ -249,7 +249,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
             result.set_result(response_mock)
             provider_mock.return_value = result
             response = yield self.http_client.fetch(
-                self.get_url('/authenticate/'), method='POST',
+                self.get_url('/auth/signin/'), method='POST',
                 body=utils.dumps({
                     'access_token': 'VALID-TOKEN', 'provider': 'google'
                 })
@@ -274,7 +274,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
             provider_mock.return_value = result
             try:
                 response = yield self.http_client.fetch(
-                    self.get_url('/authenticate/'), method='POST',
+                    self.get_url('/auth/signin/'), method='POST',
                     body=utils.dumps({
                         'access_token': 'VALID-TOKEN', 'provider': 'google'
                     })
@@ -307,3 +307,15 @@ class AuthHandlerTestCase(base.ApiTestCase):
 
         expect(response.code).to_equal(401)
         expect(response.reason).to_equal('Unauthorized')
+
+    @testing.gen_test
+    def test_can_signout_when_logged_in(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/auth/signout/'), method='POST', body='',
+            headers={'Cookie': self.mock_auth_cookie(
+                user_id=0, provider='mock', data={'id': 0}
+            )}
+        )
+
+        expect(response.code).to_equal(200)
+        expect(utils.loads(response.body)).to_equal({'loggedOut': True})

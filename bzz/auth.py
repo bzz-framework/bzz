@@ -23,10 +23,14 @@ import bzz.core as core
 
 
 def authenticated(method):
-    """Decorate methods with this to require that the user be logged in.
+    '''Decorate methods with this to require the user to be authenticated.
 
-    If the user is not logged in, a 401 unauthorized status code will return.
-    """
+    If the user is not logged in (cookie token expired, invalid or no token),
+    a 401 unauthorized status code will be returned.
+
+    If the user is authenticated, the token cookie will be renewed
+    with more `expiration` seconds (configured in `AuthHive.configure` method).
+    '''
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
         authenticated, payload = AuthHandler._is_authenticated(self)
@@ -42,6 +46,18 @@ class AuthHive(object):
 
     @classmethod
     def configure(cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN'):
+        '''Configure the application to the authentication ecosystem
+
+        :param app: The tornado application to configure
+        :type app: tornado.web.Application instance
+        :param secret_key: A string to use for encoding/decoding Jwt that must be imutable and private
+        :type secret_key: str
+        :param expiration: Time in seconds to the expiration (time to live) of the token
+        :type expiration: int
+        :param cookie_name: The name of the cookie
+        :type cookie_name: str
+
+        '''
         app.authentication_options = {
             'secret_key': secret_key,
             'expiration': expiration,
@@ -51,6 +67,19 @@ class AuthHive(object):
 
     @classmethod
     def routes_for(cls, providers):
+        '''Returns the list of routes for the authentication ecosystem with the given providers configured.
+
+        The routes returned are for these url`s:
+
+        * /auth/me/ -- For get user data and check if authenticated
+        * /auth/signin/ -- For sign in on the provider
+        * /auth/signout/ -- For sign out on the provider
+
+        :param providers: A list of providers
+        :type providers: AuthProvider class or instance
+        :returns: list -- of routes tuples (url, handler, initializers)
+
+        '''
 
         ensure_instance = lambda provider: (
             provider() if inspect.isclass(provider) else provider
@@ -61,10 +90,11 @@ class AuthHive(object):
                 for provider in providers
             ])
         }
-        routes = core.RouteList()
-        routes.append(('/authenticate/', AuthHandler, options))
-
-        return routes
+        return core.RouteList([
+            ('/auth/me/', AuthMeHandler, options),
+            ('/auth/signin/', AuthSigninHandler, options),
+            ('/auth/signout/', AuthSignoutHandler, options),
+        ])
 
 
 class AuthHandler(tornado.web.RequestHandler):
@@ -75,9 +105,36 @@ class AuthHandler(tornado.web.RequestHandler):
         self.expiration = self.application.authentication_options['expiration']
         self.cookie_name = self.application.authentication_options['cookie_name']
 
+    @classmethod
+    def _set_unauthorized(cls, handler):
+        handler.set_status(401, reason='Unauthorized')
+        raise tornado.web.Finish()
+
+    @classmethod
+    def _is_authenticated(cls, handler):
+        jwt = handler.application.authentication_options['jwt']
+        cookie_name = handler.application.authentication_options['cookie_name']
+        return jwt.try_to_decode(handler.get_cookie(cookie_name))
+
+    @classmethod
+    def _renew_authentication(cls, handler, payload):
+        payload.update(dict(
+            iat=datetime.utcnow(),
+            exp=datetime.utcnow() + timedelta(
+                seconds=handler.application.authentication_options['expiration']
+            )
+        ))
+        cookie_name = handler.application.authentication_options['cookie_name']
+        jwt = handler.application.authentication_options['jwt']
+        token = jwt.encode(payload)
+        handler.set_cookie(cookie_name, token)
+
+
+class AuthMeHandler(AuthHandler):
+
     def get(self):
         '''
-        Only returns true or false if is a valid authenticated request
+        Returns if request is authenticated, if is, returns user`s data too.
         '''
         authenticated, payload = AuthHandler._is_authenticated(self)
         result = dict(authenticated=authenticated)
@@ -85,6 +142,9 @@ class AuthHandler(tornado.web.RequestHandler):
             result['user_data'] = payload['data']
         self.set_status(200)
         self.write(result)
+
+
+class AuthSigninHandler(AuthHandler):
 
     @gen.coroutine
     def post(self):
@@ -121,29 +181,13 @@ class AuthHandler(tornado.web.RequestHandler):
             signals.unauthorized_user.send(provider_name)
             AuthHandler._set_unauthorized(self)
 
-    @classmethod
-    def _set_unauthorized(cls, handler):
-        handler.set_status(401, reason='Unauthorized')
-        raise tornado.web.Finish()
 
-    @classmethod
-    def _is_authenticated(cls, handler):
-        jwt = handler.application.authentication_options['jwt']
-        cookie_name = handler.application.authentication_options['cookie_name']
-        return jwt.try_to_decode(handler.get_cookie(cookie_name))
+class AuthSignoutHandler(AuthHandler):
 
-    @classmethod
-    def _renew_authentication(cls, handler, payload):
-        payload.update(dict(
-            iat=datetime.utcnow(),
-            exp=datetime.utcnow() + timedelta(
-                seconds=handler.application.authentication_options['expiration']
-            )
-        ))
-        cookie_name = handler.application.authentication_options['cookie_name']
-        jwt = handler.application.authentication_options['jwt']
-        token = jwt.encode(payload)
-        handler.set_cookie(cookie_name, token)
+    @authenticated
+    def post(self):
+        self.clear_cookie(self.cookie_name)
+        self.write({'loggedOut': True})
 
 
 class AuthProvider(object):

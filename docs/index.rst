@@ -44,8 +44,6 @@ We'll assume you'll be using it for the sake of this tutorial. Let's create our 
    from mongoengine import *
    import bzz
 
-   server = None
-
    # just create your own documents
    class User(Document):
       __collection__ = "GettingStartedUser"
@@ -104,6 +102,7 @@ Indices and tables
    mongoengine
    mocked
    signals
+   authentication
 
 * :ref:`genindex`
 * :ref:`modindex`
