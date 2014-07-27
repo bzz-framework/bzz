@@ -45,13 +45,15 @@ class AuthHive(object):
 
     @classmethod
     def configure(cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN'):
-        '''Configure the application to the authentication ecosystem
+        '''Configure the application to the authentication ecosystem.
 
         :param app: The tornado application to configure
         :type app: tornado.web.Application instance
-        :param secret_key: A string to use for encoding/decoding Jwt that must be imutable and private
+        :param secret_key: A string to use for encoding/decoding Jwt that must
+                           be private
         :type secret_key: str
-        :param expiration: Time in seconds to the expiration (time to live) of the token
+        :param expiration: Time in seconds to the expiration (time to live) of
+                           the token
         :type expiration: int
         :param cookie_name: The name of the cookie
         :type cookie_name: str
@@ -66,20 +68,20 @@ class AuthHive(object):
 
     @classmethod
     def routes_for(cls, providers):
-        '''Returns the list of routes for the authentication ecosystem with the given providers configured.
+        '''Returns the list of routes for the authentication ecosystem with the
+        given providers configured.
 
-        The routes returned are for these url`s:
+        The routes returned are for these URLs:
 
-        * /auth/me/ -- For get user data and check if authenticated
-        * /auth/signin/ -- For sign in on the provider
-        * /auth/signout/ -- For sign out on the provider
+        * /auth/me/ -- To get user data and check if authenticated
+        * /auth/signin/ -- To sign in using the specified provider
+        * /auth/signout/ -- To sign out using the specified provider
 
         :param providers: A list of providers
         :type providers: AuthProvider class or instance
-        :returns: list -- of routes tuples (url, handler, initializers)
+        :returns: list os tornado routes (url, handler, initializers)
 
         '''
-
         options = {
             'providers': dict([
                 (provider.get_name(), utils.ensure_instance(provider))
@@ -135,7 +137,7 @@ class AuthMeHandler(AuthHandler):
         authenticated, payload = AuthHandler._is_authenticated(self)
         result = dict(authenticated=authenticated)
         if authenticated:
-            result['user_data'] = payload['data']
+            result['userData'] = payload['data']
         self.set_status(200)
         self.write(result)
 

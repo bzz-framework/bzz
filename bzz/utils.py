@@ -35,11 +35,13 @@ def flatten(routes):
     Gets a list of routes that includes hive-generated routes (model, auth or mock), as well as
     user created routes and flatten the list to the format tornado expects.
 
-    Where:
-    * routes - list of routes created by bzz hives or by the user
+    Can be used in bzz namespace::
 
-    Returns:
-    List of routes that a tornado app expects.
+        import bzz
+        bzz.flatten(routes)
+
+    :param routes: list of routes created by bzz hives or by the user
+    :returns: List of routes that a tornado app expects.
     '''
     result = []
     for route_list in routes:
@@ -92,23 +94,22 @@ def dumps(instance):
     return json.dumps(instance, default=default)
 
 
-ensure_instance = lambda provider: (
-    provider() if inspect.isclass(provider) else provider
-)
+def ensure_instance(provider):
+    return provider() if inspect.isclass(provider) else provider
 
 
 class Jwt(object):
     '''Json Web Tokens encoding/decoding utility class.
-Usage:
->>> now = datetime.now()
->>> tokenizer = Jwt('SECRET')
->>> payload = dict(sub='user@email.com', iss='provider', token='123456789', iat=now, exp=120)
->>> token = tokenizer.encode(payload)
->>> tokenizer.decode(token)
-{'sub':'user@email.com', 'iss':'provider', 'token':'123456789',
- 'iat': <datetime>, 'exp': <datetime>}
->>> tokenizer.try_to_decode('invalid-token')
-(False, None)
+    Usage:
+    >>> now = datetime.now()
+    >>> tokenizer = Jwt('SECRET')
+    >>> payload = dict(sub='user@email.com', iss='provider', token='123456789', iat=now, exp=120)
+    >>> token = tokenizer.encode(payload)
+    >>> tokenizer.decode(token)
+    {'sub':'user@email.com', 'iss':'provider', 'token':'123456789',
+    'iat': <datetime>, 'exp': <datetime>}
+    >>> tokenizer.try_to_decode('invalid-token')
+    (False, None)
     '''
 
     def __init__(self, secret, algo='HS512'):

@@ -174,7 +174,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
 
         expect(response.code).to_equal(200)
         expect(load_json(response.body)).to_equal(dict(
-            authenticated=True, user_data={'id': 0}
+            authenticated=True, userData={'id': 0}
         ))
 
     @testing.gen_test
