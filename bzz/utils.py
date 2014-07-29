@@ -93,6 +93,20 @@ def dumps(instance):
 
     return json.dumps(instance, default=default)
 
+def get_prefix(prefix):
+    if not prefix:
+        return ''
+
+    return prefix.strip('/')
+
+def add_prefix(prefix, route):
+    prefix = get_prefix(prefix)
+    route = route.lstrip('/')
+
+    if not prefix:
+        return "/%s" % route
+
+    return "/%s/%s" % (prefix, route)
 
 def ensure_instance(provider):
     return provider() if inspect.isclass(provider) else provider

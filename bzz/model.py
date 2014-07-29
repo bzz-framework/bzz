@@ -48,8 +48,7 @@ class ModelHive(object):
 
         details_regex = r'/(%s(?:/[^/]+)?)((?:/[^/]+)*)/?'
 
-        if prefix:
-            details_regex = ('/%s' % prefix.strip('/')) + details_regex
+        details_regex = utils.add_prefix(prefix, details_regex)
 
         tree = handler_class.get_tree(model)
 

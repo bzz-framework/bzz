@@ -69,6 +69,19 @@ class TestServer(server.Server):
         ]
         return handlers_list
 
+class TestPrefixServer(server.Server):
+
+    def __init__(self, *args, **kwargs):
+        self.io_loop = kwargs.pop('io_loop', None)
+        super(TestPrefixServer, self).__init__(*args, **kwargs)
+
+    def get_handlers(self):
+        handlers_list = bzz.AuthHive.routes_for([
+            GoogleProvider(self.io_loop)
+        ], prefix="api")
+
+        return handlers_list
+
 
 class AuthHandlerTestCase(base.ApiTestCase):
     def setUp(self):
@@ -319,3 +332,48 @@ class AuthHandlerTestCase(base.ApiTestCase):
 
         expect(response.code).to_equal(200)
         expect(utils.loads(response.body)).to_equal({'loggedOut': True})
+
+
+class AuthHandlerWithPrefixTestCase(base.ApiTestCase):
+    def setUp(self):
+        super(AuthHandlerWithPrefixTestCase, self).setUp()
+
+    def get_config(self):
+        return {}
+
+    def get_app(self):
+        app = super(AuthHandlerWithPrefixTestCase, self).get_app()
+        bzz.AuthHive.configure(
+            app,
+            cookie_name='TEST_AUTH_COOKIE',
+            secret_key='TEST_SECRET_KEY',
+            expiration=1200
+        )
+        return app
+
+    def get_server(self):
+        cfg = config.Config(**self.get_config())
+        self.server = TestPrefixServer(config=cfg, io_loop=self.io_loop)
+        return self.server
+
+    @testing.gen_test
+    def test_can_authenticate_a_user_with_valid_google_plus_token_with_prefix_in_authentication_url(self):
+        with patch.object(GoogleProvider, '_fetch_userinfo') as provider_mock:
+            result = gen.Future()
+            response_mock = Mock(code=200, body=(
+                '{"email":"test@gmail.com", "name":"teste", "id":"56789"}'
+            ))
+            result.set_result(response_mock)
+            provider_mock.return_value = result
+            try:
+                response = yield self.http_client.fetch(
+                    self.get_url('/api/auth/signin/'), method='POST',
+                    body=utils.dumps({
+                        'access_token': 'VALID-TOKEN', 'provider': 'google'
+                    })
+                )
+            except HTTPError as e:
+                response = e.response
+
+            expect(response.code).to_equal(200)
+            expect(utils.loads(response.body)['authenticated']).to_be_true()

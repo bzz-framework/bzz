@@ -87,18 +87,20 @@ class AuthHive(object):
         }
 
     @classmethod
-    def routes_for(cls, providers):
+    def routes_for(cls, providers, prefix=''):
         '''Returns the list of routes for the authentication ecosystem with the
         given providers configured.
 
         The routes returned are for these URLs:
 
-        * /auth/me/ -- To get user data and check if authenticated
-        * /auth/signin/ -- To sign in using the specified provider
-        * /auth/signout/ -- To sign out using the specified provider
+        * [prefix]/auth/me/ -- To get user data and check if authenticated
+        * [prefix]/auth/signin/ -- To sign in using the specified provider
+        * [prefix]/auth/signout/ -- To sign out using the specified provider
 
         :param providers: A list of providers
         :type providers: AuthProvider class or instance
+        :param prefix: An optional argument that can be specified as means to include a prefix route (i.e.: '/api');
+        :type prefix: String
         :returns: list os tornado routes (url, handler, initializers)
 
         '''
@@ -108,10 +110,13 @@ class AuthHive(object):
                 for provider in providers
             ])
         }
+
+        url = functools.partial(utils.add_prefix, prefix)
+
         return core.RouteList([
-            ('/auth/me/', AuthMeHandler, options),
-            ('/auth/signin/', AuthSigninHandler, options),
-            ('/auth/signout/', AuthSignoutHandler, options),
+            (url('/auth/me/'), AuthMeHandler, options),
+            (url('/auth/signin/'), AuthSigninHandler, options),
+            (url('/auth/signout/'), AuthSignoutHandler, options),
         ])
 
 
