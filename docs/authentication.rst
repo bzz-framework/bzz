@@ -3,17 +3,11 @@ Authentication Support
 
 bzz comes with decorators and classes to support OAuth2 authentication on specific providers that is easy to plug to your tornado server.
 
-Currently Supported Providers
------------------------------
+It's worth noting that `AuthHive` is just an extension to the regular tornado routes. That said, it needs to add some dependencies to the application being run.
 
-* GoogleProvider
+To enable authentication, call the `AuthHive.configure` method passing your tornado app instance. To get all the routes you need to add to your app, just call `AuthHive.routes_for`:
 
-Configuration
--------------
-
-To enable authentication on your application, just create your tornado server as usual, then configure your application instance calling the `AuthHive.routes_for` method to get a list of the configured handlers and then add it to the app:
-
-.. testsetup:: mongoengine_handler_example
+.. testsetup:: auth_example_1
 
    import time
    import tornado.ioloop
@@ -26,9 +20,10 @@ To enable authentication on your application, just create your tornado server as
     from tornado.web import Application
     from tornado.ioloop import IOLoop
     import bzz
+    import bzz.providers.google as google
 
     providers = [
-        bzz.GoogleProvider,
+        google.GoogleProvider,
         # MyCustomProvider
     ]
 
@@ -36,47 +31,46 @@ To enable authentication on your application, just create your tornado server as
         # ('/', MyHandler),
         bzz.AuthHive.routes_for(providers)
     ]))
-    bzz.AuthHive.configure(app, secret_key='app-secret-key')
-    app.listen(8888)
-    IOLoop.instance().start()
 
+    bzz.AuthHive.configure(app, secret_key='app-secret-key')
+    app.listen(9999)
 
 Note that :py:meth:`~bzz.utils.flatten` method encapsulates the list of handlers.
 It is important because the `routes_for` method returns a list of routes, but
 `Application` constructor only support routes, so :py:meth:`~bzz.utils.flatten` does the magic.
 
 
+The :mod:`AuthHive` class
+-------------------------
 
-The AuthHive class
-------------------
+.. automodule:: bzz.auth
+   :members:
 
-The bzz framework gives you a `AuthHive` class to allow easy OAuth2 authentication with a few steps.
+Currently Supported Providers
+-----------------------------
 
+.. autoclass:: bzz.providers.google.GoogleProvider
+   :members:
 
-.. automethod:: bzz.auth.AuthHive.routes_for
+Signing-In
+----------
 
-.. automethod:: bzz.auth.AuthHive.configure
-
-How to Signin on a Provider
----------------------------
-
-First, users need to authenticate your requests. To do that a `access_token` and `provider`
-must be sent via `POST` in `JSON` format to the authenticate route::
+In order to sign-in, the authentication route must be called. Both `access_token` and `provider` arguments
+must be specified. This request must be sent using a `POST` in `JSON` format::
 
     POST /auth/signin/ - {'access_token': '1234567890abcdef', 'provider': 'google'}
 
 This method returns a 401 HTTP status code if the access_token or provider is invalid.
 
-On success it set a cookie named on `AuthHive.configure` `cookie_name` parameter
+On success it set a cookie with the name that was specified when you called `AuthHive.configure` (or defaults to AUTH_TOKEN)
 and returns::
 
     200 {authenticated: true}
 
-How to Signout
---------------
+Signing-Out
+-----------
 
-Sign out means clearing the authentication cookie. To do that, a `POST` to the signout
-rout must be sent::
+Signing-out means clearing the authentication cookie. To do that, a `POST` to the sign-out route must be sent::
 
     POST /auth/signout/
 
@@ -86,11 +80,10 @@ If authenticated, the response clear the authentication cookie and returns::
 
     200 {loggedOut: true}
 
-How to check if user is logged in and get users data
-----------------------------------------------------
+Getting User Data
+-----------------
 
-Information of the users authenticated on provider are stored on the cookie via JSON Web Token and are
-only accessible by the server. To get this info or check if user is authenticated make a GET on::
+Retrieving information about the authenticated user is as simple as doing a get request to the `/me` route::
 
     GET /auth/me/
 
@@ -118,12 +111,12 @@ The authenticated decorator
         def get(self):
             self.write('I`m authenticated! :)')
 
-How to write your own provider
-------------------------------
+Authoring a custom provider
+---------------------------
 
-To write your on provider just create a class extending :py:class:`bzz.AuthProvider` and
-implement a `authenticate` method that receives a `access_token`, authenticate on
-the provider and returns a user payload like::
+Creating a custom provider is as simple as extending :py:class:`bzz.AuthProvider`. You must override the `authenticate` method.
+
+It receives an `access_token` as argument and should return a dict with whatever should be stored in the JSON Web Token::
 
     {
         id: "1234567890abcdef",
@@ -131,4 +124,3 @@ the provider and returns a user payload like::
         name: "Ricardo L. Dani",
         provider: "google"
     }
-

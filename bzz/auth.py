@@ -8,6 +8,10 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
+'''
+The bzz framework gives you a AuthHive class to allow easy OAuth2 authentication with a few steps.
+'''
+
 import functools
 from datetime import datetime, timedelta
 
@@ -42,6 +46,9 @@ def authenticated(method):
 
 
 class AuthHive(object):
+    '''
+    The AuthHive is the responsible for integrating authentication into your API.
+    '''
 
     @classmethod
     def configure(cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN'):
@@ -203,48 +210,3 @@ class AuthProvider(object):
     @gen.coroutine
     def authenticate(self, access_token):
         raise NotImplementedError('Provider.authenticate method must be implemented')
-
-
-class GoogleProvider(AuthProvider):
-    API_URL = 'https://www.googleapis.com/oauth2/v1/userinfo?access_token={}'
-
-    @gen.coroutine
-    def authenticate(self, access_token):
-        '''
-        Try to get Google user info and returns it if
-        the given access_token get`s a valid user info in a string
-        json format. If the response was not an status code 200 or
-        get an error on Json, None was returned.
-
-        Example of return on success:
-        {
-            id: "1234567890abcdef",
-            email: "...@gmail.com",
-            name: "Ricardo L. Dani",
-            provider: "google"
-        }
-        '''
-
-        response = yield self._fetch_userinfo(access_token)
-
-        if response.code == 200:
-            body = utils.loads(response.body)
-            if not body.get('error'):
-                raise gen.Return({
-                    'email': body.get("email"),
-                    'name': body.get("name"),
-                    'id': body.get("id"),
-                    'provider': self.get_name()
-                })
-
-        raise gen.Return(None)
-
-    @gen.coroutine
-    def _fetch_userinfo(self, access_token):
-        try:
-            response = yield self.http_client.fetch(
-                self.API_URL.format(access_token)
-            )
-        except httpclient.HTTPError as e:
-            response = e.response
-        raise gen.Return(response)

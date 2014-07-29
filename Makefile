@@ -12,7 +12,6 @@ list:
 # required for list
 no_targets__:
 
-
 # install all dependencies (do not forget to create a virtualenv first)
 setup:
 	# ujson can fail in pypy, we use json if ujson not installed
@@ -66,4 +65,7 @@ tox:
 	@tox
 
 update-docs:
-	@cd docs && make html && open _build/html/index.html
+	@cd docs && make html
+
+open-docs:
+	open _build/html/index.html
