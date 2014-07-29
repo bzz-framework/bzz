@@ -26,6 +26,7 @@ tests_require = [
     'sphinx',
     'mongoengine',
     'nose-focus',
+    'sphinx_rtd_theme',
 ]
 
 setup(

@@ -29,13 +29,14 @@ class GoogleProvider(AuthProvider):
         json format. If the response was not an status code 200 or
         get an error on Json, None was returned.
 
-        Example of return on success:
-        {
-            id: "1234567890abcdef",
-            email: "...@gmail.com",
-            name: "Ricardo L. Dani",
-            provider: "google"
-        }
+        Example of return on success::
+
+            {
+                id: "1234567890abcdef",
+                email: "...@gmail.com",
+                name: "Ricardo L. Dani",
+                provider: "google"
+            }
         '''
 
         response = yield self._fetch_userinfo(access_token)

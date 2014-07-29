@@ -33,6 +33,19 @@ def authenticated(method):
 
     If the user is authenticated, the token cookie will be renewed
     with more `expiration` seconds (configured in `AuthHive.configure` method).
+
+    Usage:
+
+    .. testcode:: auth_example_2
+
+        import tornado
+        import bzz
+
+        class MyHandler(tornado.web.RequestHandler):
+
+            @bzz.authenticated
+            def get(self):
+                self.write('I`m authenticated! :)')
     '''
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):

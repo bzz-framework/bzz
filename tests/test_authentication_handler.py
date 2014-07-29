@@ -23,7 +23,7 @@ import bzz
 import bzz.signals as signals
 import bzz.utils as utils
 import tests.base as base
-from bzz.auth import GoogleProvider
+from bzz.providers.google import GoogleProvider
 
 
 def load_json(json_string):

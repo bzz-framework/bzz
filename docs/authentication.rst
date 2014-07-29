@@ -1,5 +1,5 @@
 Authentication Support
-===================
+======================
 
 bzz comes with decorators and classes to support OAuth2 authentication on specific providers that is easy to plug to your tornado server.
 
@@ -95,22 +95,6 @@ If authenticated::
 
     200 {authenticated: true, userData: {}}
 
-The authenticated decorator
----------------------------
-
-.. automethod:: bzz.auth.authenticated
-
-.. testcode:: auth_example_2
-
-    import tornado
-    import bzz
-
-    class MyHandler(tornado.web.RequestHandler):
-
-        @bzz.authenticated
-        def get(self):
-            self.write('I`m authenticated! :)')
-
 Authoring a custom provider
 ---------------------------
 
@@ -124,3 +108,23 @@ It receives an `access_token` as argument and should return a dict with whatever
         name: "Ricardo L. Dani",
         provider: "google"
     }
+
+AuthHive Signals
+----------------
+
+In order to interact with the authenticated user, you can use the `authorized_user` and `unauthorized_user`:
+
+.. autoinstanceattribute:: bzz.signals.authorized_user
+
+This signal is triggered when an user authenticates successfully with the API. The arguments for this signal are `provider_name` and `user_data`. The `provider_name` is used as sender and can be used to filter what signals to listen to. The `user_data` argument is a dict similar to::
+
+    {
+        id: "1234567890abcdef",
+        email: "...@gmail.com",
+        name: "Ricardo L. Dani",
+        provider: "google"
+    }
+
+.. autoinstanceattribute:: bzz.signals.unauthorized_user
+
+This signal is triggered when an user tries to authenticate with the API but fails. The only argument for this signal is `provider_name`. It is used as sender and can be used to filter what signals to listen to.
