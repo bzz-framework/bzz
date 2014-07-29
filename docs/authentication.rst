@@ -33,7 +33,6 @@ To enable authentication, call the `AuthHive.configure` method passing your torn
     ]))
 
     bzz.AuthHive.configure(app, secret_key='app-secret-key')
-    app.listen(9999)
 
 Note that :py:meth:`~bzz.utils.flatten` method encapsulates the list of handlers.
 It is important because the `routes_for` method returns a list of routes, but
