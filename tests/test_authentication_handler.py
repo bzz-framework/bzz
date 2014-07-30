@@ -69,6 +69,7 @@ class TestServer(server.Server):
         ]
         return handlers_list
 
+
 class TestPrefixServer(server.Server):
 
     def __init__(self, *args, **kwargs):
@@ -86,6 +87,7 @@ class TestPrefixServer(server.Server):
 class AuthHandlerTestCase(base.ApiTestCase):
     def setUp(self):
         super(AuthHandlerTestCase, self).setUp()
+        signals.authorized_user.receivers = {}
 
     def get_config(self):
         return {}
@@ -337,6 +339,7 @@ class AuthHandlerTestCase(base.ApiTestCase):
 class AuthHandlerWithPrefixTestCase(base.ApiTestCase):
     def setUp(self):
         super(AuthHandlerWithPrefixTestCase, self).setUp()
+        signals.authorized_user.receivers = {}
 
     def get_config(self):
         return {}
