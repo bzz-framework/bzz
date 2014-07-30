@@ -101,8 +101,7 @@ class AuthHive(object):
         :type providers: AuthProvider class or instance
         :param prefix: An optional argument that can be specified as means to include a prefix route (i.e.: '/api');
         :type prefix: String
-        :returns: list os tornado routes (url, handler, initializers)
-
+        :returns: list of tornado routes (url, handler, initializers)
         '''
         options = {
             'providers': dict([

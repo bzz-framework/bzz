@@ -1,5 +1,5 @@
-Authentication Support
-======================
+Auth Hive
+=========
 
 bzz comes with decorators and classes to support OAuth2 authentication on specific providers that is easy to plug to your tornado server.
 

@@ -17,31 +17,81 @@ import bzz.signals as signals
 import bzz.utils as utils
 
 
-AVAILABLE_HANDLERS = {
-    'mongoengine': 'bzz.mongoengine_handler.MongoEngineRestHandler'
+AVAILABLE_PROVIDERS = {
+    'mongoengine': 'bzz.providers.mongoengine_provider.MongoEngineProvider'
 }
 
 
 class ModelHive(object):
     @classmethod
-    def routes_for(cls, handler, model, prefix='', resource_name=None):
+    def routes_for(cls, provider, model, prefix='', resource_name=None):
         '''
-        Returns the tornado routes (as 3-tuples with url, handler, initializers) that correspond to the specified `model`.
+        Returns the list of routes for the specified model.
 
-        Where:
+        * [POST] Create new instances;
+        * [PUT] Update existing instances;
+        * [DELETE] Delete existing instances;
+        * [GET] Retrieve existing instances with the id for the instance;
+        * [GET] List existing instances (and filter them);
 
-        * handler is the actual handler you want to use (one of the bundled or your own handler);
-        * model is the Model class that you want routes for;
-        * prefix is an optional argument that can be specified as means to include a prefix route (i.e.: '/api');
-        * resource_name is an optional argument that can be specified to change the route name. If no resource_name specified the
-          route name is the __class__.__name__ for the specified model with underscores instead of camel case.
+        :param provider: The ORM provider to be used for this model
+        :type provider: Full-name provider or built-in provider
+        :param model: The model to be mapped
+        :type model: Class Type
+        :param prefix: Optional argument to include a prefix route (i.e.: '/api');
+        :type prefix: string
+        :param resource_name: an optional argument that can be specified to change the route name. If no resource_name specified the route name is the __class__.__name__ for the specified model with underscores instead of camel case.
+        :type resource_name: string
+        :returns: route list (can be flattened with bzz.flatten)
 
         If you specify a prefix of '/api/' as well as resource_name of 'people' your route would be similar to:
 
         http://myserver/api/people/ (do a post to this url to create a new person)
+
+        Usage:
+
+        .. testcode:: model_hive_example_1
+
+           import tornado.web
+           from mongoengine import *
+           import bzz
+
+           server = None
+
+           # just create your own documents
+           class User(Document):
+              __collection__ = "MongoEngineHandlerUser"
+              name = StringField()
+
+           def create_user():
+              # let's create a new user by posting it's data
+              http_client.fetch(
+                 'http://localhost:8890/user/',
+                 method='POST',
+                 body='name=Bernardo%20Heynemann',
+                 callback=handle_user_created
+              )
+
+           def handle_user_created(response):
+              # just making sure we got the actual user
+              try:
+                 assert response.code == 200, response.code
+              finally:
+                 io_loop.stop()
+
+           # bzz includes a helper to return the routes for your models
+           # returns a list of routes that match '/user/<user-id>/' and allows for:
+           routes = bzz.ModelHive.routes_for('mongoengine', User)
+
+           User.objects.delete()
+           application = tornado.web.Application(routes)
+           server = HTTPServer(application, io_loop=io_loop)
+           server.listen(8895)
+           io_loop.add_timeout(1, create_user)
+           io_loop.start()
         '''
-        handler_name = AVAILABLE_HANDLERS.get(handler, handler)
-        handler_class = utils.get_class(handler_name)
+        provider_name = AVAILABLE_PROVIDERS.get(provider, provider)
+        provider_class = utils.get_class(provider_name)
         name = resource_name
         if name is None:
             name = utils.convert(model.__name__)
@@ -50,19 +100,19 @@ class ModelHive(object):
 
         details_regex = utils.add_prefix(prefix, details_regex)
 
-        tree = handler_class.get_tree(model)
+        tree = provider_class.get_tree(model)
 
         options = dict(model=model, name=name, prefix=prefix, tree=tree)
         routes = core.RouteList()
 
         routes.append(
-            (details_regex % name, handler_class, options)
+            (details_regex % name, provider_class, options)
         )
 
         return routes
 
 
-class ModelRestHandler(tornado.web.RequestHandler):
+class ModelProvider(tornado.web.RequestHandler):
     @classmethod
     def get_tree(cls, model, node=None):
         if node is None:

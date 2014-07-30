@@ -1,5 +1,5 @@
-Mocked Responses
-================
+Mock Hive
+=========
 
 Most of the time creating a new API is a time-consuming task. Other teams (or people) might be depending on your API to create clients or the application that will consume your data.
 
@@ -7,11 +7,11 @@ Usually you'd give them the contract of your API (or worse, they'd have to wait 
 
 This way you can keep focus in the development of your API, while at the same time allowing people to work with what will eventually be replaced by the real API.
 
-Using Mocked Responses
-----------------------
+Using Mock Hive
+---------------
 
 .. autoclass:: bzz.mock.MockHive
-.. automethod:: bzz.mock.MockHive.routes_for
+   :members:
 
 Let's create a new server with a few mocked routes.
 MockedRoutes expects a list of tuples with

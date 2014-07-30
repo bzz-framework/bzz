@@ -68,4 +68,4 @@ update-docs:
 	@cd docs && make html
 
 open-docs:
-	open _build/html/index.html
+	@cd docs && open _build/html/index.html

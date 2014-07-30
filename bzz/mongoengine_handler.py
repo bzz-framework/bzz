@@ -17,7 +17,7 @@ import bzz.model as bzz
 import bzz.utils as utils
 
 
-class MongoEngineRestHandler(bzz.ModelRestHandler):
+class MongoEngineRestHandler(bzz.ModelProvider):
     @classmethod
     def get_model_name(cls, model):
         return model.__name__

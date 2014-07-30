@@ -8,11 +8,11 @@ bzz - the rest framework for worker bees
 
 bzz is a rest framework aimed at building restful apis for the tornado web framework.
 
-.. image:: https://travis-ci.org/heynemann/bzz.svg?branch=master
-    :target: https://travis-ci.org/heynemann/bzz
+.. image:: https://travis-ci.org/bzz-framework/bzz.svg?branch=master
+    :target: https://travis-ci.org/bzz-framework/bzz
 
-.. image:: https://coveralls.io/repos/heynemann/bzz/badge.png
-  :target: https://coveralls.io/r/heynemann/bzz
+.. image:: https://coveralls.io/repos/bzz-framework/bzz/badge.png
+  :target: https://coveralls.io/r/bzz-framework/bzz
 
 
 Getting Started
@@ -99,10 +99,10 @@ Indices and tables
 .. toctree::
    :maxdepth: 2
 
-   mongoengine
+   modelhive
    mocked
-   signals
    authentication
+   signals
 
 * :ref:`genindex`
 * :ref:`modindex`
