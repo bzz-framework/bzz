@@ -84,16 +84,16 @@ class TestPrefixServer(server.Server):
         return handlers_list
 
 
-class AuthHandlerTestCase(base.ApiTestCase):
+class AuthHiveTestCase(base.ApiTestCase):
     def setUp(self):
-        super(AuthHandlerTestCase, self).setUp()
+        super(AuthHiveTestCase, self).setUp()
         signals.authorized_user.receivers = {}
 
     def get_config(self):
         return {}
 
     def get_app(self):
-        app = super(AuthHandlerTestCase, self).get_app()
+        app = super(AuthHiveTestCase, self).get_app()
         bzz.AuthHive.configure(
             app,
             cookie_name='TEST_AUTH_COOKIE',
@@ -336,16 +336,16 @@ class AuthHandlerTestCase(base.ApiTestCase):
         expect(utils.loads(response.body)).to_equal({'loggedOut': True})
 
 
-class AuthHandlerWithPrefixTestCase(base.ApiTestCase):
+class PrefixedAuthHiveTestCase(base.ApiTestCase):
     def setUp(self):
-        super(AuthHandlerWithPrefixTestCase, self).setUp()
+        super(PrefixedAuthHiveTestCase, self).setUp()
         signals.authorized_user.receivers = {}
 
     def get_config(self):
         return {}
 
     def get_app(self):
-        app = super(AuthHandlerWithPrefixTestCase, self).get_app()
+        app = super(PrefixedAuthHiveTestCase, self).get_app()
         bzz.AuthHive.configure(
             app,
             cookie_name='TEST_AUTH_COOKIE',
