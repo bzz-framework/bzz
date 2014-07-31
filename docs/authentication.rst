@@ -124,6 +124,22 @@ This signal is triggered when an user authenticates successfully with the API. T
         provider: "google"
     }
 
+This is the same dict that's returned in the response to the `authenticate` route. If you'd like to add more fields to the response, just change this dict to include whatever info you'd like to return::
+
+    @bzz.signals.authorized_user.connect
+    def handle_authorized(self, provider_name, user_data):
+        # let's add something to the user_data dict
+        user_data['something'] = 'else'
+
+    # now the resulting json for the /authenticate method will be similar to:
+    {
+        "id": "1234567890abcdef",
+        "email": "...@gmail.com",
+        "name": "Ricardo L. Dani",
+        "provider": "google",
+        "something": "else"
+    }
+
 .. autoinstanceattribute:: bzz.signals.unauthorized_user
 
 This signal is triggered when an user tries to authenticate with the API but fails. The only argument for this signal is `provider_name`. It is used as sender and can be used to filter what signals to listen to.
