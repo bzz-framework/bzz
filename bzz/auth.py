@@ -64,7 +64,7 @@ class AuthHive(object):
     '''
 
     @classmethod
-    def configure(cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN'):
+    def configure(cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN', allow_origin_hosts=[]):
         '''Configure the application to the authentication ecosystem.
 
         :param app: The tornado application to configure
@@ -77,12 +77,16 @@ class AuthHive(object):
         :type expiration: int
         :param cookie_name: The name of the cookie
         :type cookie_name: str
+        :param allow_origin_hosts: Hosts to set in Access-Control-Allow-Origin headers
+                                   to handle with CORS requests
+        :type allow_origin_hosts: list
 
         '''
         app.authentication_options = {
             'secret_key': secret_key,
             'expiration': expiration,
             'cookie_name': cookie_name,
+            'allow_origin_hosts': allow_origin_hosts,
             'jwt': utils.Jwt(secret_key)
         }
 
@@ -150,6 +154,22 @@ class AuthHandler(tornado.web.RequestHandler):
         jwt = handler.application.authentication_options['jwt']
         token = jwt.encode(payload)
         handler.set_cookie(cookie_name, token)
+
+    def set_default_headers(self):
+        allow_hosts = ' '.join(
+            self.application.authentication_options['allow_origin_hosts']
+        )
+        if allow_hosts:
+            self.set_header('Access-Control-Allow-Origin', allow_hosts)
+        self.set_header('Access-Control-Allow-Credentials', 'true')
+        self.set_header(
+            'Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS'
+        )
+        self.set_header('Access-Control-Allow-Headers', 'Accept, Content-Type')
+
+    def options(self, *args):
+        self.set_status(200)
+        self.finish()
 
 
 class AuthMeHandler(AuthHandler):
