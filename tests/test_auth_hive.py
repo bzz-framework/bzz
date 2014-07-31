@@ -158,7 +158,7 @@ class AuthHiveTestCase(base.ApiTestCase):
         )
 
         expect(response.code).to_equal(200)
-        expect(load_json(response.body)).to_equal(dict(authenticated=True))
+        expect(load_json(response.body)).to_be_like(dict(authenticated=True, id="123"))
         cookie_name = self.server.application.authentication_options['cookie_name']
         expect(cookie_name in response.headers.get('Set-Cookie')).to_equal(True)
 
@@ -252,9 +252,11 @@ class AuthHiveTestCase(base.ApiTestCase):
             test_result['provider'] = 'google'
             expect(provider).to_equal('google')
             expect(user_data).to_equal({
+                "authenticated": True,
                 "provider": "google",
                 "email": "test@gmail.com", "name": "Teste", "id": "56789"
             })
+            user_data['something'] = 'else'
 
         with patch.object(GoogleProvider, '_fetch_userinfo') as provider_mock:
             result = gen.Future()
@@ -270,7 +272,9 @@ class AuthHiveTestCase(base.ApiTestCase):
                 })
             )
             expect(response.code).to_equal(200)
-            expect(utils.loads(response.body)['authenticated']).to_be_true()
+            data = utils.loads(response.body)
+            expect(data['authenticated']).to_be_true()
+            expect(data['something']).to_equal('else')
             expect(test_result).to_include('provider')
 
     @testing.gen_test

@@ -196,9 +196,10 @@ class AuthSigninHandler(AuthHandler):
             )
             auth_token = self.jwt.encode(payload)
 
+            user_data['authenticated'] = True
             signals.authorized_user.send(provider_name, user_data=user_data)
             self.set_cookie(self.cookie_name, auth_token)
-            self.write(dict(authenticated=True))
+            self.write(user_data)
         else:
             signals.unauthorized_user.send(provider_name)
             AuthHandler._set_unauthorized(self)
