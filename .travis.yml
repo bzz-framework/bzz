@@ -1,17 +1,14 @@
 language: python
-
 python:
-  - "2.7"
-  - "3.4"
-  - "pypy"
-  
+- '2.7'
+- '3.4'
+- pypy
 install:
-    # install python requirements
-    - make setup
-
+- make setup
 script:
-    # run tests
-    - make test
-
+- make test
 after_success:
-  - coveralls
+- coveralls
+notifications:
+  slack:
+    secure: MZVOgXeDVsLeT9hEE/gxvrp12X8yD8FOudeD+DpTIcjNCAVwBK6k8+3Uf8YaxExPuaHDhgogWJjb7oFsdK9mAha7UWPLkn6L9NGNaUHf3n+7QWMQUgwVsAa5V65CDkfXzdzfOZZuiWWmfgw/oO8iSEfu7qpDwcpOJ8pIaG3NHG8=
