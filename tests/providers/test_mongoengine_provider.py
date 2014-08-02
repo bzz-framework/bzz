@@ -52,9 +52,9 @@ class TestServer(server.Server):
         return bzz.flatten(routes)
 
 
-class MongoEngineRestHandlerTestCase(base.ApiTestCase):
+class MongoEngineProviderTestCase(base.ApiTestCase):
     def setUp(self):
-        super(MongoEngineRestHandlerTestCase, self).setUp()
+        super(MongoEngineProviderTestCase, self).setUp()
         signals.pre_get_instance.receivers = {}
         signals.post_get_instance.receivers = {}
         signals.pre_get_list.receivers = {}

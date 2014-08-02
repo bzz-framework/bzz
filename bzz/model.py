@@ -12,10 +12,6 @@ import tornado.web
 import tornado.gen as gen
 from six.moves.urllib.parse import unquote
 
-import bzz.core as core
-import bzz.signals as signals
-import bzz.utils as utils
-
 
 AVAILABLE_PROVIDERS = {
     'mongoengine': 'bzz.providers.mongoengine_provider.MongoEngineProvider'
@@ -90,6 +86,9 @@ class ModelHive(object):
            io_loop.add_timeout(1, create_user)
            io_loop.start()
         '''
+        import bzz.core as core
+        import bzz.utils as utils
+
         provider_name = AVAILABLE_PROVIDERS.get(provider, provider)
         provider_class = utils.get_class(provider_name)
         name = resource_name
@@ -112,9 +111,13 @@ class ModelHive(object):
         return routes
 
 
-class ModelProvider(tornado.web.RequestHandler):
+from bzz.cache import CacheMixin
+
+
+class ModelProvider(tornado.web.RequestHandler, CacheMixin):
     @classmethod
     def get_tree(cls, model, node=None):
+        import bzz.core as core
         if node is None:
             node = core.Node(cls.get_model_name(model), is_root=True)
 
@@ -132,6 +135,7 @@ class ModelProvider(tornado.web.RequestHandler):
 
     @classmethod
     def parse_children(cls, model, collection):
+        import bzz.core as core
         for field_name, field in cls.get_model_fields(model).items():
             child_node = core.Node(field_name)
             collection[field_name] = child_node
@@ -167,6 +171,7 @@ class ModelProvider(tornado.web.RequestHandler):
         self.tree = tree
 
     def write_json(self, obj):
+        import bzz.utils as utils
         self.set_header("Content-Type", "application/json")
         self.write(utils.dumps(obj))
 
@@ -196,6 +201,7 @@ class ModelProvider(tornado.web.RequestHandler):
 
     @gen.coroutine
     def get(self, *args, **kwargs):
+        import bzz.signals as signals
         args = self.parse_arguments(args)
         path = self.get_path_from_args(args)
         node = self.tree.find_by_path(path)
@@ -209,6 +215,7 @@ class ModelProvider(tornado.web.RequestHandler):
 
     @gen.coroutine
     def handle_get_one(self, args):
+        import bzz.signals as signals
         success, obj, parent = yield self.get_instance_from_args(args)
         if not success:
             return
@@ -224,6 +231,7 @@ class ModelProvider(tornado.web.RequestHandler):
 
     @gen.coroutine
     def handle_get_list(self, args):
+        import bzz.signals as signals
         if '/' not in args[0] and len(args) > 1:
             # /team/user -> missing user pk
             self.send_error(status_code=400)
@@ -298,6 +306,7 @@ class ModelProvider(tornado.web.RequestHandler):
 
     @gen.coroutine
     def post(self, *args, **kwargs):
+        import bzz.signals as signals
         args = self.parse_arguments(args)
         model_type = yield self.get_model_from_path(args)
 
@@ -373,6 +382,7 @@ class ModelProvider(tornado.web.RequestHandler):
 
     @gen.coroutine
     def put(self, *args, **kwargs):
+        import bzz.signals as signals
         args = self.parse_arguments(args)
         model_type = yield self.get_model_from_path(args)
 
@@ -427,6 +437,7 @@ class ModelProvider(tornado.web.RequestHandler):
 
     @gen.coroutine
     def delete(self, *args, **kwargs):
+        import bzz.signals as signals
         args = self.parse_arguments(args)
 
         if len(args) == 1 and '/' not in args[0]:
@@ -515,4 +526,5 @@ class ModelProvider(tornado.web.RequestHandler):
         return data
 
     def dump_object(self, instance):
+        import bzz.utils as utils
         return utils.dumps(instance)
