@@ -18,7 +18,7 @@ import derpconf.config as config
 import bson.objectid as oid
 
 import bzz
-import bzz.mongoengine_handler as me
+import bzz.providers.mongoengine_provider as me
 import bzz.signals as signals
 import bzz.utils as utils
 import tests.base as base
@@ -52,9 +52,9 @@ class TestServer(server.Server):
         return bzz.flatten(routes)
 
 
-class MongoEngineRestHandlerTestCase(base.ApiTestCase):
+class MongoEngineProviderTestCase(base.ApiTestCase):
     def setUp(self):
-        super(MongoEngineRestHandlerTestCase, self).setUp()
+        super(MongoEngineProviderTestCase, self).setUp()
         signals.pre_get_instance.receivers = {}
         signals.post_get_instance.receivers = {}
         signals.pre_get_list.receivers = {}
@@ -978,7 +978,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
             prop = mongoengine.StringField()
             meta = {'collection': 'root_collection'}
 
-        root_node = me.MongoEngineRestHandler.get_tree(Root)
+        root_node = me.MongoEngineProvider.get_tree(Root)
 
         expect(root_node.name).to_equal('Root')
         expect(root_node.slug).to_equal('root')
@@ -1018,7 +1018,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
             prop = mongoengine.EmbeddedDocumentField(Embedded)
             meta = {'collection': 'root_collection'}
 
-        root_node = me.MongoEngineRestHandler.get_tree(Root)
+        root_node = me.MongoEngineProvider.get_tree(Root)
 
         child_node = root_node.children['prop']
         expect(child_node.name).to_equal('prop')
@@ -1049,7 +1049,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
             prop = mongoengine.ReferenceField(Reference)
             meta = {'collection': 'root_collection'}
 
-        root_node = me.MongoEngineRestHandler.get_tree(Root)
+        root_node = me.MongoEngineProvider.get_tree(Root)
 
         child_node = root_node.children['prop']
         expect(child_node.name).to_equal('prop')
@@ -1080,7 +1080,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
             prop = mongoengine.ListField(mongoengine.ReferenceField(Reference))
             meta = {'collection': 'root_collection'}
 
-        root_node = me.MongoEngineRestHandler.get_tree(Root)
+        root_node = me.MongoEngineProvider.get_tree(Root)
 
         child_node = root_node.children['prop']
         expect(child_node.name).to_equal('prop')
@@ -1113,7 +1113,7 @@ class MongoEngineRestHandlerTestCase(base.ApiTestCase):
             )
             meta = {'collection': 'root_collection'}
 
-        root_node = me.MongoEngineRestHandler.get_tree(Root)
+        root_node = me.MongoEngineProvider.get_tree(Root)
 
         child_node = root_node.children['prop']
         expect(child_node.name).to_equal('prop')
