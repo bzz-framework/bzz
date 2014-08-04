@@ -49,7 +49,7 @@ def authenticated(method):
     '''
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
-        authenticated, payload = AuthHandler._is_authenticated(self)
+        authenticated, payload = AuthHandler.is_authenticated(self)
         if authenticated:
             AuthHandler._renew_authentication(self, payload)
         else:
@@ -133,7 +133,7 @@ class AuthHandler(tornado.web.RequestHandler):
         raise tornado.web.Finish()
 
     @classmethod
-    def _is_authenticated(cls, handler):
+    def is_authenticated(cls, handler):
         jwt = handler.application.authentication_options['jwt']
         cookie_name = handler.application.authentication_options['cookie_name']
         return jwt.try_to_decode(handler.get_cookie(cookie_name))
@@ -158,7 +158,7 @@ class AuthMeHandler(AuthHandler):
         '''
         Returns if request is authenticated, if is, returns user`s data too.
         '''
-        authenticated, payload = AuthHandler._is_authenticated(self)
+        authenticated, payload = AuthHandler.is_authenticated(self)
         result = dict(authenticated=authenticated)
         if authenticated:
             result['userData'] = payload['data']
