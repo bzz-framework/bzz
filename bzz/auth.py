@@ -207,7 +207,6 @@ class AuthSigninHandler(AuthHandler):
 
 class AuthSignoutHandler(AuthHandler):
 
-    @authenticated
     def post(self):
         self.clear_cookie(self.cookie_name)
         self.write({'loggedOut': True})

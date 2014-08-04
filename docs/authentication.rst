@@ -73,9 +73,7 @@ Signing-out means clearing the authentication cookie. To do that, a `POST` to th
 
     POST /auth/signout/
 
-If your request is not authenticated, a HTTP 401 is returned.
-
-If authenticated, the response clear the authentication cookie and returns::
+The response clear the authentication cookie and returns::
 
     200 {loggedOut: true}
 

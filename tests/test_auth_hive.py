@@ -339,6 +339,15 @@ class AuthHiveTestCase(base.ApiTestCase):
         expect(response.code).to_equal(200)
         expect(utils.loads(response.body)).to_equal({'loggedOut': True})
 
+    @testing.gen_test
+    def test_can_signout_when_logged_out(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/auth/signout/'), method='POST', body='',
+        )
+
+        expect(response.code).to_equal(200)
+        expect(utils.loads(response.body)).to_equal({'loggedOut': True})
+
 
 class PrefixedAuthHiveTestCase(base.ApiTestCase):
     def setUp(self):
