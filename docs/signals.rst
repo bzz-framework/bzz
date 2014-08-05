@@ -271,3 +271,29 @@ Example handler::
     def handle_post_instance_deleted(sender, instance, handler):
         # do something else with instance
         # just remember the instance has already been deleted!
+
+pre_get_user_details
+--------------------
+
+In order to add more items in the authenticated user data (retrieved by `/me` route), you can use the `pre_get_user_details`:
+
+.. autoinstanceattribute:: bzz.signals.pre_get_user_details
+
+Arguments:
+
+* provider_name: Used as sender and can be used to filter what signals to listen to.
+* user_data: A dict similar to::
+
+    {
+        id: "1234567890abcdef",
+        email: "...@holmes.com",
+        name: "Sherlock Holmes",
+        provider: "google"
+    }
+
+Example handler::
+
+    @signals.pre_get_user_details.connect
+    def handle_pre_get_user_details(self, provider_name, user_data):
+        # add user details under user_data, such as:
+        # user_data['username'] = 'holmes'

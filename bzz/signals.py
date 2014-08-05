@@ -28,3 +28,5 @@ post_delete_instance = signal('bzz.post-delete-instance')
 
 authorized_user = signal('bzz.authorized-user')
 unauthorized_user = signal('bzz.unauthorized-user')
+
+pre_get_user_details = signal('bzz.pre-get-user-details')

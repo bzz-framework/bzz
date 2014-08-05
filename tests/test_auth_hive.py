@@ -202,6 +202,27 @@ class AuthHiveTestCase(base.ApiTestCase):
         expect(load_json(response.body)).to_equal(dict(authenticated=False))
 
     @testing.gen_test
+    def test_can_send_signal_on_pre_get_user_details(self):
+
+        @signals.pre_get_user_details.connect
+        def test_signal(provider, user_data=None):
+            expect(provider).to_equal('mock')
+            expect(user_data).to_equal({
+                'userData': {u'id': 0}, 'authenticated': True
+            })
+            user_data['username'] = 'holmes'
+
+        response = yield self.http_client.fetch(
+            self.get_url('/auth/me/'),
+            headers={'Cookie': self.mock_auth_cookie(0, 'mock', data={'id': 0})}
+        )
+
+        expect(response.code).to_equal(200)
+        expect(load_json(response.body)).to_equal(dict(
+            authenticated=True, userData={'id': 0}, username='holmes'
+        ))
+
+    @testing.gen_test
     def test_cannot_authenticate_a_user_with_invalid_google_plus_token(self):
         with patch.object(GoogleProvider, '_fetch_userinfo') as provider_mock:
             result = gen.Future()
