@@ -69,3 +69,6 @@ update-docs:
 
 open-docs:
 	@cd docs && open _build/html/index.html
+
+publish:
+	@python setup.py sdist upload
