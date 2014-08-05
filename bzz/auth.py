@@ -162,7 +162,9 @@ class AuthMeHandler(AuthHandler):
         result = dict(authenticated=authenticated)
         if authenticated:
             result['userData'] = payload['data']
-            signals.pre_get_user_details.send(payload['iss'], user_data=result)
+            signals.pre_get_user_details.send(
+                payload['iss'], user_data=result, handler=self
+            )
         self.set_status(200)
         self.write(result)
 

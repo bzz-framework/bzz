@@ -291,9 +291,11 @@ Arguments:
         provider: "google"
     }
 
+* handler: The tornado handler that will be used to update the user data
+
 Example handler::
 
     @signals.pre_get_user_details.connect
-    def handle_pre_get_user_details(self, provider_name, user_data):
+    def handle_pre_get_user_details(self, provider_name, user_data, handler):
         # add user details under user_data, such as:
         # user_data['username'] = 'holmes'

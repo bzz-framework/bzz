@@ -205,7 +205,7 @@ class AuthHiveTestCase(base.ApiTestCase):
     def test_can_send_signal_on_pre_get_user_details(self):
 
         @signals.pre_get_user_details.connect
-        def test_signal(provider, user_data=None):
+        def test_signal(provider, user_data=None, handler=None):
             expect(provider).to_equal('mock')
             expect(user_data).to_equal({
                 'userData': {u'id': 0}, 'authenticated': True
