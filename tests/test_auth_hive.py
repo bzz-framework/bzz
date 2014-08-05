@@ -8,7 +8,6 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
-from datetime import datetime
 from mock import Mock, patch
 
 import cow.server as server
@@ -106,23 +105,6 @@ class AuthHiveTestCase(base.ApiTestCase):
         cfg = config.Config(**self.get_config())
         self.server = TestServer(config=cfg, io_loop=self.io_loop)
         return self.server
-
-    def mock_auth_cookie(self, user_id, provider, data=None, token='12345', expiration=None):
-        if data is None:
-            data = {}
-
-        if expiration is None:
-            expiration = datetime(year=5000, month=11, day=30)
-
-        jwt = self.server.application.authentication_options['jwt']
-        token = jwt.encode({
-            'sub': user_id, 'data': data, 'iss': provider, 'token': token,
-            'exp': expiration
-        })
-        cookie_name = self.server.application.authentication_options['cookie_name']
-        return '='.join((
-            cookie_name, token.decode('utf-8')
-        ))
 
     @testing.gen_test
     def test_cant_authenticate_with_invalid_provider(self):
