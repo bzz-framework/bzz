@@ -34,13 +34,13 @@ def load_json(json_string):
 
 class MockProvider(bzz.AuthProvider):
     @gen.coroutine
-    def authenticate(self, access_token):
+    def authenticate(self, access_token, proxy_info=None):
         raise gen.Return({'id': "123"})
 
 
 class MockUnauthorizedProvider(bzz.AuthProvider):
     @gen.coroutine
-    def authenticate(self, access_token):
+    def authenticate(self, access_token, proxy_info=None):
         raise gen.Return(None)
 
 

@@ -64,7 +64,11 @@ class AuthHive(object):
     '''
 
     @classmethod
-    def configure(cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN'):
+    def configure(
+            cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN',
+            proxy_port=None, proxy_host=None, proxy_username=None,
+            proxy_password=None
+        ):
         '''Configure the application to the authentication ecosystem.
 
         :param app: The tornado application to configure
@@ -77,12 +81,26 @@ class AuthHive(object):
         :type expiration: int
         :param cookie_name: The name of the cookie
         :type cookie_name: str
+        :param proxy_host: Proxy port
+        :type proxy_host: str
+        :param proxy_host: Proxy host
+        :type proxy_host: str
+        :param proxy_username: Proxy username
+        :type proxy_username: str
+        :param proxy_password: Proxy password
+        :type proxy_password: str
 
         '''
         app.authentication_options = {
             'secret_key': secret_key,
             'expiration': expiration,
             'cookie_name': cookie_name,
+            'proxy_info': {
+                'proxy_port': proxy_port,
+                'proxy_host': proxy_host,
+                'proxy_username': proxy_username,
+                'proxy_password': proxy_password,
+            },
             'jwt': utils.Jwt(secret_key)
         }
 
@@ -187,7 +205,9 @@ class AuthSigninHandler(AuthHandler):
         if provider is None:
             AuthHandler._set_unauthorized(self)
 
-        user_data = yield provider.authenticate(access_token)
+        user_data = yield provider.authenticate(
+            access_token, self.application.authentication_options['proxy_info']
+        )
         if user_data:
             payload = dict(
                 sub=user_data['id'],
@@ -221,6 +241,11 @@ class AuthProvider(object):
         if not io_loop:
             io_loop = ioloop.IOLoop.instance()
         self.http_client = httpclient.AsyncHTTPClient(io_loop=io_loop)
+
+    @gen.coroutine
+    def fetch(self, url):
+        request = HTTPRequest(url, **self.proxy_info)
+        yield self.http_client.fetch(request)
 
     @classmethod
     def get_name(cls):

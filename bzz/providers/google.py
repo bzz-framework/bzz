@@ -22,7 +22,7 @@ class GoogleProvider(AuthProvider):
     API_URL = 'https://www.googleapis.com/oauth2/v1/userinfo?access_token={}'
 
     @gen.coroutine
-    def authenticate(self, access_token):
+    def authenticate(self, access_token, proxy_info=None):
         '''
         Try to get Google user info and returns it if
         the given access_token get`s a valid user info in a string
@@ -39,7 +39,7 @@ class GoogleProvider(AuthProvider):
             }
         '''
 
-        response = yield self._fetch_userinfo(access_token)
+        response = yield self._fetch_userinfo(access_token, proxy_info)
 
         if response.code == 200:
             body = utils.loads(response.body)
@@ -54,11 +54,11 @@ class GoogleProvider(AuthProvider):
         raise gen.Return(None)
 
     @gen.coroutine
-    def _fetch_userinfo(self, access_token):
+    def _fetch_userinfo(self, access_token, proxy_info):
+        url = self.API_URL.format(access_token)
+        req = HTTPRequest(url, **proxy_info) if proxy_info else url
         try:
-            response = yield self.http_client.fetch(
-                self.API_URL.format(access_token)
-            )
+            response = yield self.fetch(req)
         except httpclient.HTTPError as e:
             response = e.response
         raise gen.Return(response)
