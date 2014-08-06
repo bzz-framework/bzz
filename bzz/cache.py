@@ -30,7 +30,8 @@ class InMemoryStorage(object):
 
     @gen.coroutine
     def get(self, uri):
-        return self.data.get(uri, None)
+        value = self.data.get(uri, None)
+        return value
 
 
 class CachedHandler(web.RequestHandler):
@@ -114,17 +115,19 @@ class CachedHandler(web.RequestHandler):
                 # in a finally block to avoid GC issues prior to Python 3.4.
                 self._prepared_future.set_result(None)
 
-    @property
-    def handler(self):
+    def initialize_handler(self):
         if not self._instance:
             self._instance = self.handler_class(self.application, self.request, **self.handler_kw)
             self._instance_write = self._instance.write
+            setattr(self._instance, 'write', self.write)
 
-        setattr(self._instance, 'write', self.write)
+    @property
+    def handler(self):
+        self.initialize_handler()
         return self._instance
 
     def write(self, chunk):
-        handler = self.handler  # NOQA
+        self.initialize_handler()
         self._instance_write(chunk)
 
         if self.is_caching:
@@ -139,7 +142,8 @@ class CachedHandler(web.RequestHandler):
 
     @gen.coroutine
     def end_caching(self):
-        yield self.application.cache_storage.put(self.request.uri, "".join(self.cache_parts))
+        if self.cache_parts and self.is_caching:
+            yield self.application.cache_storage.put(self.request.uri, "".join(self.cache_parts))
         self.is_caching = False
         self.cache_parts = []
 
@@ -165,8 +169,8 @@ class CacheHive(object):
     @classmethod
     def init(cls, application, storage, cached_routes):
         setattr(application, 'cache_storage', storage)
-        setattr(application, 'start_request', cls.start_request(application))
         setattr(application, 'cached_routes', cls.parse_routes(cached_routes))
+        setattr(application, 'start_request', cls.start_request(application))
 
     @classmethod
     def parse_routes(cls, routes):
