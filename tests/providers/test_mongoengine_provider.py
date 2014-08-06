@@ -19,6 +19,7 @@ import bson.objectid as oid
 
 import bzz
 import bzz.mongoengine_handler as me
+import bzz.cache as cache
 import bzz.signals as signals
 import bzz.utils as utils
 import tests.base as base
@@ -50,6 +51,11 @@ class TestServer(server.Server):
             bzz.ModelHive.routes_for('mongoengine', models.CustomQuerySet),
         ]
         return bzz.flatten(routes)
+
+    def after_start(self, io_loop):
+        cache.CacheHive.init(self.application, cache.InMemoryStorage(), [
+            r'/user/.+'
+        ])
 
 
 class MongoEngineProviderTestCase(base.ApiTestCase):
@@ -108,6 +114,15 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
     @testing.gen_test
     def test_can_get_user(self):
         user = fix.UserFactory.create()
+        response = yield self.http_client.fetch(
+            self.get_url('/user/%s' % user.id),
+        )
+        expect(response.code).to_equal(200)
+        obj = load_json(response.body)
+        expect(obj['email']).to_equal(user.email)
+        expect(obj['name']).to_equal(user.name)
+        expect(obj['slug']).to_equal(user.slug)
+
         response = yield self.http_client.fetch(
             self.get_url('/user/%s' % user.id),
         )

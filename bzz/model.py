@@ -111,10 +111,10 @@ class ModelHive(object):
         return routes
 
 
-from bzz.cache import CacheMixin
+# from bzz.cache import CacheMixin
 
 
-class ModelProvider(tornado.web.RequestHandler, CacheMixin):
+class ModelProvider(tornado.web.RequestHandler):
     @classmethod
     def get_tree(cls, model, node=None):
         import bzz.core as core
