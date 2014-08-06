@@ -251,7 +251,7 @@ class AuthHiveTestCase(base.ApiTestCase):
         test_result = {}
 
         @signals.authorized_user.connect
-        def test_signal(provider, user_data=None):
+        def test_signal(provider, user_data=None, handler=None):
             test_result['provider'] = 'google'
             expect(provider).to_equal('google')
             expect(user_data).to_equal({
@@ -286,7 +286,7 @@ class AuthHiveTestCase(base.ApiTestCase):
         test_result = {}
 
         @signals.unauthorized_user.connect
-        def test_signal(provider):
+        def test_signal(provider, handler=None):
             test_result['provider'] = provider
 
         with patch.object(GoogleProvider, '_fetch_userinfo') as provider_mock:
