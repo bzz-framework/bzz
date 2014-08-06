@@ -56,6 +56,7 @@ class GoogleProvider(AuthProvider):
     @gen.coroutine
     def _fetch_userinfo(self, access_token, proxy_info):
         url = self.API_URL.format(access_token)
+        logging.warn('Requesting %s with proxy %s...' % url, proxy_info)
         req = HTTPRequest(url, **proxy_info) if proxy_info else url
         try:
             response = yield self.fetch(req)
