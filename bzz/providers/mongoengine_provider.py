@@ -8,6 +8,7 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
+import sys
 import math
 
 import tornado.gen as gen
@@ -87,9 +88,13 @@ class MongoEngineProvider(bzz.ModelProvider):
                 setattr(instance, key, value)
 
         if isinstance(instance, mongoengine.Document):
-            instance.save()
+            try:
+                instance.save()
+            except mongoengine.NotUniqueError:
+                err = sys.exc_info()[1]
+                raise gen.Return((None, (409, err)))
 
-        raise gen.Return(instance)
+        raise gen.Return((instance, None))
 
     @gen.coroutine
     def fill_property(self, model, instance, key, value, updated_fields=None):

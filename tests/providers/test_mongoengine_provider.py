@@ -48,6 +48,7 @@ class TestServer(server.Server):
             bzz.ModelHive.routes_for('mongoengine', models.Team),
             bzz.ModelHive.routes_for('mongoengine', models.Student),
             bzz.ModelHive.routes_for('mongoengine', models.CustomQuerySet),
+            bzz.ModelHive.routes_for('mongoengine', models.UniqueUser),
         ]
         return bzz.flatten(routes)
 
@@ -1171,3 +1172,20 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
                 self.get_url('/custom_query_set/%s' % user.id),
             )
         expect(err.error.code).to_equal(404)
+
+    @testing.gen_test
+    def test_can_create_unique_user(self):
+        models.UniqueUser.objects.delete()
+
+        models.UniqueUser(name="unique").save()
+
+        err = expect.error_to_happen(HTTPError)
+        with err:
+            yield self.http_client.fetch(
+                self.get_url('/unique_user/'),
+                method='POST',
+                body='name=unique'
+            )
+
+        expect(err.error.code).to_equal(409)
+        expect(err.error.response.reason).to_equal("Conflict")

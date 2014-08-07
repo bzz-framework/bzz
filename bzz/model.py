@@ -314,13 +314,19 @@ class ModelProvider(tornado.web.RequestHandler):
                 self.send_error(400)
                 return
 
-            instance = yield self.handle_create_one(args)
+            instance, error = yield self.handle_create_one(args)
         else:
             is_reference = yield self.is_reference(args)
             if is_reference:
                 instance = yield self.handle_find_and_associate(args)
+                error = None
             else:
-                instance = yield self.handle_create_and_associate(args)
+                instance, error = yield self.handle_create_and_associate(args)
+
+        if error is not None:
+            status_code, error = error
+            self.send_error(status_code, reason=str(error))
+            return
 
         signals.post_create_instance.send(
             instance.__class__,
@@ -338,17 +344,20 @@ class ModelProvider(tornado.web.RequestHandler):
 
     @gen.coroutine
     def handle_create_one(self, args):
-        instance = yield self.save_new_instance(self.model, self.get_request_data())
-        raise gen.Return(instance)
+        instance, error = yield self.save_new_instance(self.model, self.get_request_data())
+        raise gen.Return((instance, error))
 
     @gen.coroutine
     def handle_create_and_associate(self, args):
         path, pk = args[0].split('/')
         root = yield self.get_instance(pk)
         model_type = self.get_model_type(root, args[1:])
-        instance = yield self.save_new_instance(model_type, self.get_request_data())
+        instance, error = yield self.save_new_instance(model_type, self.get_request_data())
+        if error is not None:
+            raise gen.Return((None, error))
+
         yield self.associate_instance(root, args[-1], instance)
-        raise gen.Return(instance)
+        raise gen.Return((instance, error))
 
     @gen.coroutine
     def handle_find_and_associate(self, args):
