@@ -246,7 +246,7 @@ class AuthProvider(object):
 
     @gen.coroutine
     def fetch(self, url):
-        request = HTTPRequest(url, **self.proxy_info)
+        request = httpclient.HTTPRequest(url, **self.proxy_info)
         yield self.http_client.fetch(request)
 
     @classmethod
