@@ -66,7 +66,7 @@ class AuthHive(object):
     @classmethod
     def configure(
             cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN',
-            proxy_port=None, proxy_host=None, proxy_username=None,
+            proxy_host=None, proxy_port=None, proxy_username=None,
             proxy_password=None
             ):
         '''Configure the application to the authentication ecosystem.
@@ -81,13 +81,13 @@ class AuthHive(object):
         :type expiration: int
         :param cookie_name: The name of the cookie
         :type cookie_name: str
-        :param proxy_host: Proxy port
+        :param proxy_host: Host of the Proxy
         :type proxy_host: str
-        :param proxy_host: Proxy host
-        :type proxy_host: str
-        :param proxy_username: Proxy username
+        :param proxy_port: Port of the Proxy
+        :type proxy_port: str
+        :param proxy_username: Username of the Proxy
         :type proxy_username: str
-        :param proxy_password: Proxy password
+        :param proxy_password: Password of the Proxy
         :type proxy_password: str
 
         '''

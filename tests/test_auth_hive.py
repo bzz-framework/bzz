@@ -396,3 +396,57 @@ class PrefixedAuthHiveTestCase(base.ApiTestCase):
 
             expect(response.code).to_equal(200)
             expect(utils.loads(response.body)['authenticated']).to_be_true()
+
+
+class ProxyAuthHiveTestCase(base.ApiTestCase):
+    def setUp(self):
+        super(ProxyAuthHiveTestCase, self).setUp()
+        signals.authorized_user.receivers = {}
+
+    def get_config(self):
+        return {}
+
+    def get_app(self):
+        app = super(ProxyAuthHiveTestCase, self).get_app()
+        bzz.AuthHive.configure(
+            app,
+            cookie_name='TEST_AUTH_COOKIE',
+            secret_key='TEST_SECRET_KEY',
+            expiration=1200,
+            proxy_host='10.10.10.10',
+            proxy_port='666',
+            proxy_username='ricardo.dani',
+            proxy_password='password'
+        )
+        return app
+
+    def get_server(self):
+        cfg = config.Config(**self.get_config())
+        self.server = TestPrefixServer(config=cfg, io_loop=self.io_loop)
+        return self.server
+
+    @testing.gen_test
+    def test_can_fetch_userinfo_with_proxy_credentials(self):
+        with patch.object(GoogleProvider, '_fetch_userinfo') as provider_mock:
+            result = gen.Future()
+            response_mock = Mock(code=200, body=(
+                '{"email":"test@gmail.com", "name":"teste", "id":"56789"}'
+            ))
+            result.set_result(response_mock)
+            provider_mock.return_value = result
+            try:
+                response = yield self.http_client.fetch(
+                    self.get_url('/api/auth/signin/'), method='POST',
+                    body=utils.dumps({
+                        'access_token': 'VALID-TOKEN', 'provider': 'google'
+                    })
+                )
+            except HTTPError as e:
+                response = e.response
+
+            expect(provider_mock.call_args[0][1]).to_equal(
+                {'proxy_port': '666', 'proxy_username': 'ricardo.dani',
+                 'proxy_password': 'password', 'proxy_host': '10.10.10.10'}
+            )
+            expect(response.code).to_equal(200)
+            expect(utils.loads(response.body)['authenticated']).to_be_true()
