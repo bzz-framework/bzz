@@ -255,5 +255,5 @@ class AuthProvider(object):
         return cls.__name__.split('Provider')[0].lower()
 
     @gen.coroutine
-    def authenticate(self, access_token):
+    def authenticate(self, access_token, proxy_info=None):
         raise NotImplementedError('Provider.authenticate method must be implemented')
