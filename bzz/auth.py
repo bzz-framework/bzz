@@ -68,7 +68,7 @@ class AuthHive(object):
             cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN',
             proxy_port=None, proxy_host=None, proxy_username=None,
             proxy_password=None
-        ):
+            ):
         '''Configure the application to the authentication ecosystem.
 
         :param app: The tornado application to configure
@@ -243,11 +243,6 @@ class AuthProvider(object):
         if not io_loop:
             io_loop = ioloop.IOLoop.instance()
         self.http_client = httpclient.AsyncHTTPClient(io_loop=io_loop)
-
-    @gen.coroutine
-    def fetch(self, url):
-        request = httpclient.HTTPRequest(url, **self.proxy_info)
-        yield self.http_client.fetch(request)
 
     @classmethod
     def get_name(cls):
