@@ -37,6 +37,13 @@ All those operations also work in inner properties. What this means is that if y
    :members:
    :undoc-members:
 
+Errors
+------
+
+In the event of a POST, PUT or DELETE, if the model being changed fails validation, a status code of 400 (Bad Request) is returned.
+
+If the model being changed violates an uniqueness constraint, bzz will return a status code of 409 (Conflict), instead.
+
 Supported Providers
 -------------------
 
