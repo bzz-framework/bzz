@@ -423,7 +423,14 @@ class ModelProvider(tornado.web.RequestHandler):
             instance, parent = yield self.get_instance_property(root, args[1:])
             model_type = instance.__class__
             property_name, pk = args[-1].split('/')
-        instance, updated = yield self.update_instance(pk, self.get_request_data(), model_type, instance, parent)
+        error, instance, updated = yield self.update_instance(pk, self.get_request_data(), model_type, instance, parent)
+
+        if error is not None:
+            status_code, error = error
+            self.set_status(status_code)
+            self.write(str(error))
+            return
+
         raise gen.Return([instance, updated, model_type])
 
     def validate_update_request_data(self, root, model_type):
@@ -455,9 +462,16 @@ class ModelProvider(tornado.web.RequestHandler):
             property_name, pk = args[-1], None
             if '/' in property_name:
                 property_name, pk = property_name.split('/')
-            instance = yield self.handle_delete_association(parent, instance, property_name)
+            instance, error = yield self.handle_delete_association(parent, instance, property_name)
         else:
             instance = yield self.handle_delete_instance(pk)
+            error = None
+
+        if error is not None:
+            status_code, error = error
+            self.set_status(status_code)
+            self.write(str(error))
+            return
 
         if instance:
             signals.post_delete_instance.send(model_type, instance=instance, handler=self)
@@ -484,9 +498,9 @@ class ModelProvider(tornado.web.RequestHandler):
         else:
             setattr(parent, property_name, None)
 
-        parent.save()
+        _, error = yield self.save_instance(parent)
 
-        raise gen.Return(instance)
+        raise gen.Return((instance, error))
 
     @gen.coroutine
     def list(self):

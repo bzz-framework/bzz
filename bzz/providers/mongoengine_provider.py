@@ -178,11 +178,25 @@ class MongoEngineProvider(bzz.ModelProvider):
                 setattr(instance, field_name, value)
 
         if parent and isinstance(instance, mongoengine.EmbeddedDocument):
-            parent.save()
+            _, error = yield self.save_instance(parent)
         else:
-            instance.save()
+            _, error = yield self.save_instance(instance)
 
-        raise gen.Return((instance, updated_fields))
+        raise gen.Return((error, instance, updated_fields))
+
+    @gen.coroutine
+    def save_instance(self, instance):
+        error = None
+        try:
+            instance.save()
+        except mongoengine.NotUniqueError:
+            err = sys.exc_info()[1]
+            raise gen.Return((None, (409, err)))
+        except mongoengine.ValidationError:
+            err = sys.exc_info()[1]
+            raise gen.Return((None, (400, err)))
+
+        raise gen.Return((instance, error))
 
     @gen.coroutine
     def delete_instance(self, pk):

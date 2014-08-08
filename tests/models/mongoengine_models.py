@@ -105,4 +105,5 @@ class UniqueUser(mongoengine.Document):
 
 class ValidationUser(mongoengine.Document):
     name = mongoengine.StringField(required=True)
+    items = mongoengine.ListField(mongoengine.ReferenceField(UniqueUser), required=True)
     meta = {'collection': 'validation_user'}

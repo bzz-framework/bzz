@@ -1194,14 +1194,39 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
     @testing.gen_test
     def test_can_create_invalid_user(self):
         models.ValidationUser.objects.delete()
+        models.UniqueUser.objects.delete()
+
+        user = models.UniqueUser(name="unique")
+        user.save()
 
         err = expect.error_to_happen(HTTPError)
         with err:
             yield self.http_client.fetch(
                 self.get_url('/validation_user/'),
                 method='POST',
-                body=''
+                body='items[]=%s' % user.id
             )
 
         expect(err.error.code).to_equal(400)
         expect(err.error.response.body).to_equal("ValidationError (ValidationUser:None) (Field is required: ['name'])")
+
+    @testing.gen_test
+    def test_cant_remove_invalid_association(self):
+        models.ValidationUser.objects.delete()
+        models.UniqueUser.objects.delete()
+
+        user = models.UniqueUser(name="unique")
+        user.save()
+
+        validation = models.ValidationUser(name="validation", items=[user])
+        validation.save()
+
+        err = expect.error_to_happen(HTTPError)
+        with err:
+            yield self.http_client.fetch(
+                self.get_url('/validation_user/%s/items/%s' % (str(validation.id), str(user.id))),
+                method='DELETE'
+            )
+
+        expect(err.error.code).to_equal(400)
+        expect(err.error.response.body).to_equal("ValidationError (ValidationUser:%s) (Field is required and cannot be empty: ['items'])" % (validation.id))
