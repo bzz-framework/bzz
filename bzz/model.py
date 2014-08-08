@@ -325,7 +325,8 @@ class ModelProvider(tornado.web.RequestHandler):
 
         if error is not None:
             status_code, error = error
-            self.send_error(status_code, reason=str(error))
+            self.set_status(status_code)
+            self.write(str(error))
             return
 
         signals.post_create_instance.send(

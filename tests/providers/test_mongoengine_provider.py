@@ -49,6 +49,7 @@ class TestServer(server.Server):
             bzz.ModelHive.routes_for('mongoengine', models.Student),
             bzz.ModelHive.routes_for('mongoengine', models.CustomQuerySet),
             bzz.ModelHive.routes_for('mongoengine', models.UniqueUser),
+            bzz.ModelHive.routes_for('mongoengine', models.ValidationUser),
         ]
         return bzz.flatten(routes)
 
@@ -1188,4 +1189,19 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
             )
 
         expect(err.error.code).to_equal(409)
-        expect(err.error.response.reason).to_equal("Conflict")
+        expect(err.error.response.body).to_equal('Tried to save duplicate unique keys (insertDocument :: caused by :: 11000 E11000 duplicate key error index: bzz_test.unique_user.$name_1  dup key: { : "unique" })')
+
+    @testing.gen_test
+    def test_can_create_invalid_user(self):
+        models.ValidationUser.objects.delete()
+
+        err = expect.error_to_happen(HTTPError)
+        with err:
+            yield self.http_client.fetch(
+                self.get_url('/validation_user/'),
+                method='POST',
+                body=''
+            )
+
+        expect(err.error.code).to_equal(400)
+        expect(err.error.response.body).to_equal("ValidationError (ValidationUser:None) (Field is required: ['name'])")

@@ -101,3 +101,8 @@ class CustomQuerySet(mongoengine.Document):
 class UniqueUser(mongoengine.Document):
     name = mongoengine.StringField(unique=True)
     meta = {'collection': 'unique_user'}
+
+
+class ValidationUser(mongoengine.Document):
+    name = mongoengine.StringField(required=True)
+    meta = {'collection': 'validation_user'}

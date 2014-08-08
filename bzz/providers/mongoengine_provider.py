@@ -93,6 +93,9 @@ class MongoEngineProvider(bzz.ModelProvider):
             except mongoengine.NotUniqueError:
                 err = sys.exc_info()[1]
                 raise gen.Return((None, (409, err)))
+            except mongoengine.ValidationError:
+                err = sys.exc_info()[1]
+                raise gen.Return((None, (400, err)))
 
         raise gen.Return((instance, None))
 
