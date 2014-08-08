@@ -1189,7 +1189,7 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
             )
 
         expect(err.error.code).to_equal(409)
-        expect(err.error.response.body).to_equal('Tried to save duplicate unique keys (insertDocument :: caused by :: 11000 E11000 duplicate key error index: bzz_test.unique_user.$name_1  dup key: { : "unique" })')
+        expect(err.error.response.body).to_include('unique keys')
 
     @testing.gen_test
     def test_can_create_invalid_user(self):
