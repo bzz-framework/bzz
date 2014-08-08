@@ -356,7 +356,7 @@ class ModelProvider(tornado.web.RequestHandler):
         if error is not None:
             raise gen.Return((None, error))
 
-        instance, error = yield self.associate_instance(root, args[-1], instance)
+        _, error = yield self.associate_instance(root, args[-1], instance)
         if error is not None:
             raise gen.Return((None, error))
 
@@ -374,7 +374,7 @@ class ModelProvider(tornado.web.RequestHandler):
         value = request_data[key]
         instance = yield self.get_instance(value, model=model_type)
 
-        instance, error = yield self.associate_instance(root, args[-1], instance)
+        _, error = yield self.associate_instance(root, args[-1], instance)
         if error is not None:
             raise gen.Return((None, error))
 

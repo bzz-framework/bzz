@@ -312,7 +312,7 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         instances = {}
 
         def handle_post_create(sender, instance, handler):
-            instances[instance.id] = (sender, instance)
+            instances[instance.slug] = (sender, instance)
 
         user = models.User(name="Bernardo Heynemann", email="foo@bar.com")
         user.save()
@@ -320,7 +320,7 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         team = models.Team(name="test-team", users=[user])
         team.save()
 
-        signals.post_create_instance.connect(handle_post_create, sender=models.Team)
+        signals.post_create_instance.connect(handle_post_create)
 
         response = yield self.http_client.fetch(
             self.get_url('/team/%s/users/' % team.id),
@@ -329,8 +329,8 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         )
 
         expect(response.code).to_equal(200)
-        expect(instances).to_include(team.id)
-        expect(instances[team.id][0]).to_equal(models.Team)
+        expect(instances).to_include('bernardo-heynemann')
+        expect(instances['bernardo-heynemann'][0]).to_equal(models.User)
 
     @testing.gen_test
     def test_can_subscribe_to_pre_update_signal(self):
