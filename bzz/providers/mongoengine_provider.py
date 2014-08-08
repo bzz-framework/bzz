@@ -299,7 +299,16 @@ class MongoEngineProvider(bzz.ModelProvider):
         else:
             setattr(obj, field_name, instance)
 
-        raise gen.Return(obj.save())
+        try:
+            obj.save()
+        except mongoengine.NotUniqueError:
+            err = sys.exc_info()[1]
+            raise gen.Return((None, (409, err)))
+        except mongoengine.ValidationError:
+            err = sys.exc_info()[1]
+            raise gen.Return((None, (400, err)))
+
+        raise gen.Return((obj, None))
 
     def get_property_model(self, obj, field_name):
         property_name = field_name

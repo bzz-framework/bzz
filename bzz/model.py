@@ -318,8 +318,7 @@ class ModelProvider(tornado.web.RequestHandler):
         else:
             is_reference = yield self.is_reference(args)
             if is_reference:
-                instance = yield self.handle_find_and_associate(args)
-                error = None
+                instance, error = yield self.handle_find_and_associate(args)
             else:
                 instance, error = yield self.handle_create_and_associate(args)
 
@@ -357,7 +356,10 @@ class ModelProvider(tornado.web.RequestHandler):
         if error is not None:
             raise gen.Return((None, error))
 
-        yield self.associate_instance(root, args[-1], instance)
+        instance, error = yield self.associate_instance(root, args[-1], instance)
+        if error is not None:
+            raise gen.Return((None, error))
+
         raise gen.Return((instance, error))
 
     @gen.coroutine
@@ -371,8 +373,12 @@ class ModelProvider(tornado.web.RequestHandler):
         key = "%s[]" % args[-1]
         value = request_data[key]
         instance = yield self.get_instance(value, model=model_type)
-        yield self.associate_instance(root, args[-1], instance)
-        raise gen.Return(instance)
+
+        instance, error = yield self.associate_instance(root, args[-1], instance)
+        if error is not None:
+            raise gen.Return((None, error))
+
+        raise gen.Return((instance, None))
 
     def get_model_type(self, obj, args):
         for index, arg in enumerate(args[:-1]):

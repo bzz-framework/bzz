@@ -107,3 +107,7 @@ class ValidationUser(mongoengine.Document):
     name = mongoengine.StringField(required=True)
     items = mongoengine.ListField(mongoengine.ReferenceField(UniqueUser), required=True)
     meta = {'collection': 'validation_user'}
+
+    def clean(self):
+        if len(self.items) > 1:
+            raise mongoengine.ValidationError(field_name='items', message='something went wrong')

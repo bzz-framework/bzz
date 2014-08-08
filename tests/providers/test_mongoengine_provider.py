@@ -312,14 +312,15 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         instances = {}
 
         def handle_post_create(sender, instance, handler):
-            instances[instance.slug] = (sender, instance)
-
-        signals.post_create_instance.connect(handle_post_create)
+            instances[instance.id] = (sender, instance)
 
         user = models.User(name="Bernardo Heynemann", email="foo@bar.com")
         user.save()
+
         team = models.Team(name="test-team", users=[user])
         team.save()
+
+        signals.post_create_instance.connect(handle_post_create, sender=models.Team)
 
         response = yield self.http_client.fetch(
             self.get_url('/team/%s/users/' % team.id),
@@ -328,8 +329,8 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         )
 
         expect(response.code).to_equal(200)
-        expect(instances).to_include('bernardo-heynemann')
-        expect(instances['bernardo-heynemann'][0]).to_equal(models.User)
+        expect(instances).to_include(team.id)
+        expect(instances[team.id][0]).to_equal(models.Team)
 
     @testing.gen_test
     def test_can_subscribe_to_pre_update_signal(self):
@@ -1189,7 +1190,7 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
             )
 
         expect(err.error.code).to_equal(409)
-        expect(err.error.response.body).to_include('unique keys')
+        expect('unique keys' in err.error.response.body).to_be_true()
 
     @testing.gen_test
     def test_can_create_invalid_user(self):
@@ -1230,3 +1231,28 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
 
         expect(err.error.code).to_equal(400)
         expect(err.error.response.body).to_equal("ValidationError (ValidationUser:%s) (Field is required and cannot be empty: ['items'])" % (validation.id))
+
+    @testing.gen_test
+    def test_cant_save_when_invalid_association(self):
+        models.ValidationUser.objects.delete()
+        models.UniqueUser.objects.delete()
+
+        user = models.UniqueUser(name="unique")
+        user.save()
+
+        user2 = models.UniqueUser(name="unique2")
+        user2.save()
+
+        validation = models.ValidationUser(name="validation", items=[user])
+        validation.save()
+
+        err = expect.error_to_happen(HTTPError)
+        with err:
+            yield self.http_client.fetch(
+                self.get_url('/validation_user/%s/items/' % str(validation.id)),
+                method='POST',
+                body='items[]=%s' % user2.id
+            )
+
+        expect(err.error.code).to_equal(400)
+        expect(err.error.response.body).to_equal("ValidationError (ValidationUser:%s) (something went wrong: ['__all__'])" % (validation.id))
