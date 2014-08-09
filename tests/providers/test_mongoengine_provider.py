@@ -8,6 +8,8 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
+import locale
+
 import mongoengine
 import cow.server as server
 import cow.plugins.mongoengine_plugin as mongoengine_plugin
@@ -1190,7 +1192,8 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
             )
 
         expect(err.error.code).to_equal(409)
-        expect('unique keys' in err.error.response.body).to_be_true()
+        encoding = locale.getdefaultlocale()[1]
+        expect('unique keys' in err.error.response.body.decode(encoding)).to_be_true()
 
     @testing.gen_test
     def test_can_create_invalid_user(self):
