@@ -9,7 +9,52 @@
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
 
-from blinker import signal
+from tornado.concurrent import is_future
+import tornado.gen as gen
+import blinker
+
+
+class Signal(blinker.NamedSignal):
+    @gen.coroutine
+    def send(self, *sender, **kwargs):
+        if len(sender) == 0:
+            sender = None
+        elif len(sender) > 1:
+            raise TypeError('send() accepts only one positional argument, '
+                            '%s given' % len(sender))
+        else:
+            sender = sender[0]
+
+        if not self.receivers:
+            raise gen.Return([])
+
+        results = []
+        for receiver in self.receivers_for(sender):
+            result = receiver(sender, **kwargs)
+
+            if is_future(result):
+                result = yield result
+            results.append((receiver, result))
+
+        raise gen.Return(results)
+
+
+class Namespace(dict):
+    """A mapping of signal names to signals."""
+
+    def signal(self, name, doc=None):
+        """Return the :class:`NamedSignal` *name*, creating it if required.
+
+        Repeated calls to this function will return the same signal object.
+
+        """
+        try:
+            return self[name]
+        except KeyError:
+            return self.setdefault(name, Signal(name, doc))
+
+
+signal = Namespace().signal
 
 pre_get_instance = signal('bzz.pre-get-instance')
 post_get_instance = signal('bzz.post-get-instance')

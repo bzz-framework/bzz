@@ -201,10 +201,10 @@ class ModelProvider(tornado.web.RequestHandler):
         node = self.tree.find_by_path(path)
 
         if (node.is_root or node.is_multiple) and '/' not in args[-1]:
-            signals.pre_get_list.send(node.model_type, arguments=args, handler=self)
+            yield signals.pre_get_list.send(node.model_type, arguments=args, handler=self)
             yield self.handle_get_list(args)
         else:
-            signals.pre_get_instance.send(node.model_type, arguments=args, handler=self)
+            yield signals.pre_get_instance.send(node.model_type, arguments=args, handler=self)
             yield self.handle_get_one(args)
 
     @gen.coroutine
@@ -217,7 +217,7 @@ class ModelProvider(tornado.web.RequestHandler):
             self.send_error(status_code=404)
             return
 
-        signals.post_get_instance.send(obj.__class__, instance=obj, handler=self)
+        yield signals.post_get_instance.send(obj.__class__, instance=obj, handler=self)
 
         self.write_json(self.dump_instance(obj))
         self.finish()
@@ -251,7 +251,7 @@ class ModelProvider(tornado.web.RequestHandler):
 
             model_type = self.get_property_model(parent, args[-1])
 
-        signals.post_get_list.send(model_type, items=items, handler=self)
+        yield signals.post_get_list.send(model_type, items=items, handler=self)
 
         self.write_json(self.dump_list(items))
         self.finish()
@@ -301,7 +301,7 @@ class ModelProvider(tornado.web.RequestHandler):
         args = self.parse_arguments(args)
         model_type = yield self.get_model_from_path(args)
 
-        signals.pre_create_instance.send(
+        yield signals.pre_create_instance.send(
             model_type,
             arguments=args,
             handler=self,
@@ -328,7 +328,7 @@ class ModelProvider(tornado.web.RequestHandler):
             self.write(str(error))
             return
 
-        signals.post_create_instance.send(
+        yield signals.post_create_instance.send(
             instance.__class__,
             instance=instance,
             handler=self
@@ -392,7 +392,7 @@ class ModelProvider(tornado.web.RequestHandler):
         args = self.parse_arguments(args)
         model_type = yield self.get_model_from_path(args)
 
-        signals.pre_update_instance.send(
+        yield signals.pre_update_instance.send(
             model_type,
             arguments=args,
             handler=self
@@ -411,7 +411,7 @@ class ModelProvider(tornado.web.RequestHandler):
             return
 
         instance, updated, model = yield self.handle_update(args)
-        signals.post_update_instance.send(model, instance=instance, updated_fields=updated, handler=self)
+        yield signals.post_update_instance.send(model, instance=instance, updated_fields=updated, handler=self)
         self.write('OK')
 
     @gen.coroutine
@@ -457,7 +457,7 @@ class ModelProvider(tornado.web.RequestHandler):
             return
 
         model_type = yield self.get_model_from_path(args)
-        signals.pre_delete_instance.send(model_type, arguments=args, handler=self)
+        yield signals.pre_delete_instance.send(model_type, arguments=args, handler=self)
 
         path, pk = args[0].split('/')
         root = yield self.get_instance(pk)
@@ -480,7 +480,7 @@ class ModelProvider(tornado.web.RequestHandler):
             return
 
         if instance:
-            signals.post_delete_instance.send(model_type, instance=instance, handler=self)
+            yield signals.post_delete_instance.send(model_type, instance=instance, handler=self)
             self.write('OK')
         else:
             self.write('FAIL')
