@@ -336,11 +336,11 @@ class ModelProvider(tornado.web.RequestHandler):
         pk = yield self.get_instance_id(instance)
         self.set_header('X-Created-Id', pk)
         self.set_header('location', '/%s%s/%s/' % (
-            self.prefix,
+            self.prefix.lstrip('/'),
             self.name,
             pk
         ))
-        self.write('OK')
+        self.write_json(self.dump_instance(instance))
 
     @gen.coroutine
     def handle_create_one(self, args):

@@ -33,38 +33,38 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
 
         return [
             ('GET', '/user', {}, 200, to_json, []),
-            ('POST', '/user', dict(body="name=test%20user&age=32"), 200, None, 'OK'),
+            ('POST', '/user', dict(body="name=test%20user&age=32"), 200, None, None),
             ('GET', '/user', {}, 200, to_json, self.__assert_user_data(name="test user", age=32)),
             ('GET', '/user/test%20user', {}, 200, to_json, self.__assert_user_data(name="test user", age=32)),
-            ('PUT', '/user/test%20user', dict(body="age=31"), 200, None, 'OK'),
+            ('PUT', '/user/test%20user', dict(body="age=31"), 200, None, None),
             ('GET', '/user/test%20user', {}, 200, to_json, self.__assert_user_data(name="test user", age=31)),
-            ('POST', '/user', dict(body="name=test-user2&age=32"), 200, None, 'OK'),
-            ('DELETE', '/user/test-user2', {}, 200, None, 'OK'),
+            ('POST', '/user', dict(body="name=test-user2&age=32"), 200, None, None),
+            ('DELETE', '/user/test-user2', {}, 200, None, None),
             ('GET', '/user', {}, 200, to_json, self.__assert_len(1)),
             ('GET', '/team', {}, 200, to_json, []),
-            ('POST', '/team', dict(body="code=team-1&owner=test%20user"), 200, None, 'OK'),
+            ('POST', '/team', dict(body="code=team-1&owner=test%20user"), 200, None, None),
             ('GET', '/team/team-1', {}, 200, to_json, self.__assert_team_data(name="team-1", owner="test user")),
-            ('POST', '/user', dict(body="name=test-user3&age=32"), 200, None, 'OK'),
-            ('PUT', '/team/team-1', dict(body="owner=test-user3"), 200, None, 'OK'),
+            ('POST', '/user', dict(body="name=test-user3&age=32"), 200, None, None),
+            ('PUT', '/team/team-1', dict(body="owner=test-user3"), 200, None, None),
             ('PUT', '/team/team-1', dict(body="members[]=test-user3"), 400, None, RESPONSE_400),
             ('GET', '/team/team-1', {}, 200, to_json, self.__assert_team_data(name='team-1', member_count=0)),
-            ('POST', '/team', dict(body="code=team-2&owner=test%20user&members[]=test%20user"), 200, None, 'OK'),
+            ('POST', '/team', dict(body="code=team-2&owner=test%20user&members[]=test%20user"), 200, None, None),
             ('GET', '/team/team-2', {}, 200, to_json, self.__assert_team_data(name='team-2', member_count=1)),
             ('POST', '/team', dict(body="code=team-3&owner=test%20user&members[]=test%20user&members[]=test-user3"),
-                200, None, 'OK'),
+                200, None, None),
             ('GET', '/team/team-3', {}, 200, to_json, self.__assert_team_data(name='team-3', member_count=2)),
-            ('DELETE', '/team/team-2', {}, 200, None, 'OK'),
-            ('DELETE', '/team/team-3', {}, 200, None, 'OK'),
+            ('DELETE', '/team/team-2', {}, 200, None, None),
+            ('DELETE', '/team/team-3', {}, 200, None, None),
             ('GET', '/team', {}, 200, to_json, self.__assert_len(1)),
-            ('POST', '/team/team-1/members', dict(body="members[]=test%20user"), 200, None, 'OK'),
+            ('POST', '/team/team-1/members', dict(body="members[]=test%20user"), 200, None, None),
             ('GET', '/team/team-1/members', {}, 200, to_json, self.__assert_len(1)),
-            ('POST', '/user', dict(body="name=test-user4&age=32"), 200, None, 'OK'),
-            ('POST', '/team/team-1/members', dict(body="members[]=test-user4"), 200, None, 'OK'),
-            ('DELETE', '/team/team-1/members/test-user4', {}, 200, None, 'OK'),
+            ('POST', '/user', dict(body="name=test-user4&age=32"), 200, None, None),
+            ('POST', '/team/team-1/members', dict(body="members[]=test-user4"), 200, None, None),
+            ('DELETE', '/team/team-1/members/test-user4', {}, 200, None, None),
             ('PUT', '/team/team-1/members/test-user4', dict(body=""), 400, None, RESPONSE_400),
             ('GET', '/team/team-1/members', {}, 200, to_json, self.__assert_len(1)),
             ('GET', '/user/test-user4', {}, 200, to_json, self.__assert_user_data(name="test-user4", age=32)),
-            ('POST', '/team/team-1/projects', dict(body="name=project-1&module.name=module-name"), 200, None, 'OK'),
+            ('POST', '/team/team-1/projects', dict(body="name=project-1&module.name=module-name"), 200, None, None),
             ('GET', '/team/team-1/projects', {}, 200, to_json, self.__assert_len(1)),
             ('GET', '/team/team-1/projects/project-1', {}, 200, to_json,
                 self.__assert_project_data(name="project-1", module="module-name")),
@@ -185,9 +185,9 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         if transform_body is not None:
             body = transform_body(response.body)
 
-        if isinstance(expected_body, types.FunctionType):
+        if expected_body and isinstance(expected_body, types.FunctionType):
             expected_body(body)
-        else:
+        elif expected_body:
             expect(body).to_be_like(expected_body)
 
         print("A %s %s - %s" % (method, url, response.code))

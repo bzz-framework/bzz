@@ -93,6 +93,8 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         self.server = TestServer(config=cfg)
         return self.server
 
+    from nose_focus import focus
+    @focus
     @testing.gen_test
     def test_can_create_user(self):
         response = yield self.http_client.fetch(
@@ -102,7 +104,10 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         )
 
         expect(response.code).to_equal(200)
-        expect(response.body).to_equal('OK')
+        obj = utils.loads(response.body)
+        expect(obj['email']).to_equal('heynemann@gmail.com')
+        expect(obj['slug']).to_equal('bernardo-heynemann')
+        expect(obj['name']).to_equal('Bernardo Heynemann')
         expect(response.headers).to_include('X-Created-Id')
         expect(response.headers).to_include('location')
 
@@ -140,7 +145,8 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         )
 
         expect(response.code).to_equal(200)
-        expect(response.body).to_equal('OK')
+        obj = utils.loads(response.body)
+        expect(obj['user']).to_equal('Bernardo Heynemann <heynemann@gmail.com>')
         expect(response.headers).to_include('X-Created-Id')
         expect(response.headers['X-Created-Id']).to_equal('bernardo-heynemann')
         expect(response.headers).to_include('location')
@@ -598,7 +604,11 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         )
 
         expect(response.code).to_equal(200)
-        expect(response.body).to_equal('OK')
+        obj = utils.loads(response.body)
+        expect(obj['name']).to_equal('Bernardo Heynemann')
+        expect(obj['child']).not_to_be_null()
+        expect(obj['child']['first_name']).to_equal('Rodrigo')
+        expect(obj['child']['last_name']).to_equal('Lucena')
         expect(response.headers).to_include('X-Created-Id')
         expect(response.headers).to_include('location')
 
@@ -621,7 +631,14 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         )
 
         expect(response.code).to_equal(200)
-        expect(response.body).to_equal('OK')
+        obj = utils.loads(response.body)
+        expect(obj['name']).to_equal('Bernardo Heynemann')
+
+        expect(obj['child']).not_to_be_null()
+        expect(obj['child']['first_name']).to_equal('Rodrigo')
+        expect(obj['child']['child']).not_to_be_null()
+        expect(obj['child']['child']['first_name']).to_equal('Polo')
+
         expect(response.headers).to_include('X-Created-Id')
         expect(response.headers).to_include('location')
 
@@ -671,7 +688,8 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         )
 
         expect(response.code).to_equal(200)
-        expect(response.body).to_equal('OK')
+        obj = utils.loads(response.body)
+        expect(obj['name']).to_equal('Bernardo Heynemann')
         expect(response.headers).to_include('X-Created-Id')
         pk = response.headers['X-Created-Id']
 
@@ -682,7 +700,9 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         )
 
         expect(response.code).to_equal(200)
-        expect(response.body).to_equal('OK')
+        obj = utils.loads(response.body)
+        expect(obj['first_name']).to_equal('Rodrigo')
+        expect(obj['last_name']).to_equal('Lucena')
 
         parent = models.Parent.objects.get(id=pk)
         expect(parent.name).to_equal('Bernardo Heynemann')
