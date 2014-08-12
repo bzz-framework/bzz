@@ -25,6 +25,13 @@ import bzz.utils as utils
 import bzz.core as core
 
 
+def _authenticated(handler):
+    authenticated, payload = AuthHandler.is_authenticated(handler)
+    if authenticated:
+        AuthHandler._renew_authentication(handler, payload)
+    else:
+        AuthHandler._set_unauthorized(handler)
+
 def authenticated(method):
     '''Decorate methods with this to require the user to be authenticated.
 
@@ -49,11 +56,7 @@ def authenticated(method):
     '''
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
-        authenticated, payload = AuthHandler.is_authenticated(self)
-        if authenticated:
-            AuthHandler._renew_authentication(self, payload)
-        else:
-            AuthHandler._set_unauthorized(self)
+        _authenticated(self)
         return method(self, *args, **kwargs)
     return wrapper
 
@@ -62,12 +65,12 @@ class AuthHive(object):
     '''
     The AuthHive is the responsible for integrating authentication into your API.
     '''
-
     @classmethod
     def configure(
             cls, app, secret_key, expiration=1200, cookie_name='AUTH_TOKEN',
-            proxy_host=None, proxy_port=None, proxy_username=None,
-            proxy_password=None
+            authenticated_create=True, authenticated_update=True,
+            authenticated_delete=True, proxy_host=None, proxy_port=None,
+            proxy_username=None, proxy_password=None, authenticated_get=True
             ):
         '''Configure the application to the authentication ecosystem.
 
@@ -89,6 +92,22 @@ class AuthHive(object):
         :type proxy_username: str
         :param proxy_password: Password of the Proxy
         :type proxy_password: str
+        :param authenticated_get: Should check authentication when listen to
+                                  `bzz.pre-get-instance` and `bzz.pre-get-list`
+                                  signals. Default is `True`
+        :type authenticated_get: bool
+        :param authenticated_save: Should check authentication when listen to
+                                   `bzz.pre-create-instance` signal. Default is
+                                   `True`
+        :type authenticated_save: bool
+        :param authenticated_update: Should check authentication when listen to
+                                     `bzz.pre-update-instance` signal. Default is
+                                     `True`
+        :type authenticated_update: bool
+        :param authenticated_delete: Should check authentication when listen to
+                                     `bzz.pre-delete-instance` signal. Default is
+                                     `True`
+        :type authenticated_delete: bool
 
         '''
         app.authentication_options = {
@@ -101,8 +120,21 @@ class AuthHive(object):
                 'proxy_username': proxy_username,
                 'proxy_password': proxy_password,
             },
-            'jwt': utils.Jwt(secret_key)
+            'jwt': utils.Jwt(secret_key),
         }
+        if authenticated_get:
+            signals.pre_get_instance.connect(cls.handle_check_auth)
+            signals.pre_get_list.connect(cls.handle_check_auth)
+        if authenticated_create:
+            signals.pre_create_instance.connect(cls.handle_check_auth)
+        if authenticated_update:
+            signals.pre_update_instance.connect(cls.handle_check_auth)
+        if authenticated_delete:
+            signals.pre_delete_instance.connect(cls.handle_check_auth)
+
+    @classmethod
+    def handle_check_auth(cls, *args, **kwargs):
+        _authenticated(kwargs['handler'])
 
     @classmethod
     def routes_for(cls, providers, prefix=''):

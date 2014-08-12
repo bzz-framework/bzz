@@ -26,7 +26,6 @@ import tests.base as base
 
 RESPONSE_400 = '<html><title>400:badrequest</title><body>400:badrequest</body></html>'
 
-
 class MongoEngineEndToEndTestCase(base.ApiTestCase):
     def __get_test_data(self):
         to_json = lambda body: load_json(body)
@@ -88,6 +87,7 @@ class MongoEngineEndToEndTestCase(base.ApiTestCase):
         signals.post_create_instance.receivers = {}
         signals.post_update_instance.receivers = {}
         signals.post_delete_instance.receivers = {}
+
         EndToEndUser.objects.delete()
         EndToEndTeam.objects.delete()
 

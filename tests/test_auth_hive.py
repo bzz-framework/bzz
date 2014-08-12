@@ -79,13 +79,31 @@ class TestPrefixServer(server.Server):
         return handlers_list
 
 
-class AuthHiveTestCase(base.ApiTestCase):
+class BaseAuthHiveTestCase(base.ApiTestCase):
+
     def setUp(self):
-        super(AuthHiveTestCase, self).setUp()
+        super(BaseAuthHiveTestCase, self).setUp()
         signals.authorized_user.receivers = {}
+        signals.pre_get_instance.receivers = {}
+        signals.pre_get_list.receivers = {}
+        signals.pre_create_instance.receivers = {}
+        signals.pre_update_instance.receivers = {}
+        signals.pre_delete_instance.receivers = {}
 
     def get_config(self):
         return {}
+
+    def tearDown(self):
+        super(BaseAuthHiveTestCase, self).tearDown()
+        signals.authorized_user.receivers = {}
+        signals.pre_get_instance.receivers = {}
+        signals.pre_get_list.receivers = {}
+        signals.pre_create_instance.receivers = {}
+        signals.pre_update_instance.receivers = {}
+        signals.pre_delete_instance.receivers = {}
+
+
+class AuthHiveTestCase(BaseAuthHiveTestCase):
 
     def get_app(self):
         app = super(AuthHiveTestCase, self).get_app()
@@ -93,7 +111,11 @@ class AuthHiveTestCase(base.ApiTestCase):
             app,
             cookie_name='TEST_AUTH_COOKIE',
             secret_key='TEST_SECRET_KEY',
-            expiration=1200
+            expiration=1200,
+            authenticated_create=True,
+            authenticated_update=True,
+            authenticated_delete=True,
+            authenticated_get=True
         )
         return app
 
@@ -366,13 +388,7 @@ class AuthHiveTestCase(base.ApiTestCase):
         expect(utils.loads(response.body)).to_equal({'loggedOut': True})
 
 
-class PrefixedAuthHiveTestCase(base.ApiTestCase):
-    def setUp(self):
-        super(PrefixedAuthHiveTestCase, self).setUp()
-        signals.authorized_user.receivers = {}
-
-    def get_config(self):
-        return {}
+class PrefixedAuthHiveTestCase(BaseAuthHiveTestCase):
 
     def get_app(self):
         app = super(PrefixedAuthHiveTestCase, self).get_app()
@@ -380,7 +396,11 @@ class PrefixedAuthHiveTestCase(base.ApiTestCase):
             app,
             cookie_name='TEST_AUTH_COOKIE',
             secret_key='TEST_SECRET_KEY',
-            expiration=1200
+            expiration=1200,
+            authenticated_create=True,
+            authenticated_update=True,
+            authenticated_delete=True,
+            authenticated_get=True
         )
         return app
 
@@ -412,13 +432,7 @@ class PrefixedAuthHiveTestCase(base.ApiTestCase):
             expect(utils.loads(response.body)['authenticated']).to_be_true()
 
 
-class ProxyAuthHiveTestCase(base.ApiTestCase):
-    def setUp(self):
-        super(ProxyAuthHiveTestCase, self).setUp()
-        signals.authorized_user.receivers = {}
-
-    def get_config(self):
-        return {}
+class ProxyAuthHiveTestCase(BaseAuthHiveTestCase):
 
     def get_app(self):
         app = super(ProxyAuthHiveTestCase, self).get_app()
@@ -427,6 +441,10 @@ class ProxyAuthHiveTestCase(base.ApiTestCase):
             cookie_name='TEST_AUTH_COOKIE',
             secret_key='TEST_SECRET_KEY',
             expiration=1200,
+            authenticated_create=True,
+            authenticated_update=True,
+            authenticated_delete=True,
+            authenticated_get=True,
             proxy_host='10.10.10.10',
             proxy_port='666',
             proxy_username='ricardo.dani',
@@ -436,7 +454,7 @@ class ProxyAuthHiveTestCase(base.ApiTestCase):
 
     def get_server(self):
         cfg = config.Config(**self.get_config())
-        self.server = TestPrefixServer(config=cfg, io_loop=self.io_loop)
+        self.server = TestServer(config=cfg, io_loop=self.io_loop)
         return self.server
 
     @testing.gen_test
@@ -450,7 +468,7 @@ class ProxyAuthHiveTestCase(base.ApiTestCase):
             provider_mock.return_value = result
             try:
                 response = yield self.http_client.fetch(
-                    self.get_url('/api/auth/signin/'), method='POST',
+                    self.get_url('/auth/signin/'), method='POST',
                     body=utils.dumps({
                         'access_token': 'VALID-TOKEN', 'provider': 'google'
                     })
@@ -464,3 +482,184 @@ class ProxyAuthHiveTestCase(base.ApiTestCase):
             )
             expect(response.code).to_equal(200)
             expect(utils.loads(response.body)['authenticated']).to_be_true()
+
+
+class TestSignalsHandler(RequestHandler):
+
+    def get(self, id=None):
+        if id:
+            signals.pre_get_instance.send(handler=self)
+            self.write('GET OK')
+        else:
+            signals.pre_get_list.send(handler=self)
+            self.write('GET LIST OK')
+
+    def post(self, id=None):
+        signals.pre_create_instance.send(handler=self)
+        self.write('POST OK')
+
+    def put(self, id=None):
+        signals.pre_update_instance.send(handler=self)
+        self.write('UPDATE OK')
+
+    def delete(self, id=None):
+        signals.pre_delete_instance.send(handler=self)
+        self.write('DELETE OK')
+
+
+class TestSignalServer(server.Server):
+
+    def __init__(self, *args, **kwargs):
+        self.io_loop = kwargs.pop('io_loop', None)
+        super(TestSignalServer, self).__init__(*args, **kwargs)
+
+    def get_handlers(self):
+        handlers_list = bzz.AuthHive.routes_for([
+            MockProvider(self.io_loop)
+        ])
+        handlers_list += [
+            (r'/test_signals(?:/([0-9]*))?', TestSignalsHandler),
+        ]
+        return handlers_list
+
+
+class AuthenticationSignalsTestCase(BaseAuthHiveTestCase):
+
+    def get_app(self):
+        app = super(AuthenticationSignalsTestCase, self).get_app()
+        bzz.AuthHive.configure(
+            app, 'SECRET',
+            authenticated_create=False,
+            authenticated_update=False,
+            authenticated_delete=False,
+            authenticated_get=False
+        )
+        return app
+
+    def get_server(self):
+        cfg = config.Config(**self.get_config())
+        self.server = TestSignalServer(config=cfg, io_loop=self.io_loop)
+        return self.server
+
+    @gen.coroutine
+    def fetch_alias(self, url, method, auth_cookie=False):
+        kwargs = {'body': ''} if method in ('POST', 'PUT') else {}
+        if auth_cookie:
+            kwargs.update({
+                'headers': {
+                    'Cookie': self.mock_auth_cookie(0, 'mock')
+                }
+            })
+        try:
+            response = yield self.http_client.fetch(
+                self.get_url(url), method=method, **kwargs
+            )
+        except HTTPError as e:
+            response = e.response
+        raise gen.Return(response)
+
+    @testing.gen_test
+    def test_if_authentications_signals_are_empty_and_not_authenticating(self):
+        expect(signals.pre_get_instance.receivers).to_equal({})
+        response = yield self.fetch_alias('/test_signals/1', 'GET')
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('GET OK')
+
+        expect(signals.pre_get_list.receivers).to_equal({})
+        response = yield self.fetch_alias('/test_signals', 'GET')
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('GET LIST OK')
+
+        expect(signals.pre_create_instance.receivers).to_equal({})
+        response = yield self.fetch_alias('/test_signals', 'POST')
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('POST OK')
+
+        expect(signals.pre_update_instance.receivers).to_equal({})
+        response = yield self.fetch_alias('/test_signals', 'PUT')
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('UPDATE OK')
+
+        expect(signals.pre_delete_instance.receivers).to_equal({})
+        response = yield self.fetch_alias('/test_signals', 'DELETE')
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('DELETE OK')
+
+    @testing.gen_test
+    def test_if_authenticate_get_option_is_autheticating_sended_handlers(self):
+        bzz.AuthHive.configure(
+            self.get_app(), 'SECRET',
+            authenticated_create=False,
+            authenticated_update=False,
+            authenticated_delete=False,
+            authenticated_get=True
+        )
+        expect(signals.pre_get_instance.receivers).to_length(1)
+        response = yield self.fetch_alias('/test_signals/1', 'GET')
+        expect(response.code).to_equal(401)
+        expect(response.reason).to_equal('Unauthorized')
+        response = yield self.fetch_alias('/test_signals/1', 'GET', auth_cookie=True)
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('GET OK')
+
+        expect(signals.pre_get_list.receivers).to_length(1)
+        response = yield self.fetch_alias('/test_signals', 'GET')
+        expect(response.code).to_equal(401)
+        expect(response.reason).to_equal('Unauthorized')
+        response = yield self.fetch_alias('/test_signals', 'GET', auth_cookie=True)
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('GET LIST OK')
+
+    @testing.gen_test
+    def test_if_authenticate_create_option_is_autheticating_sended_handlers(self):
+        bzz.AuthHive.configure(
+            self.get_app(), 'SECRET',
+            authenticated_create=True,
+            authenticated_update=False,
+            authenticated_delete=False,
+            authenticated_get=False
+        )
+
+        expect(signals.pre_create_instance.receivers).to_length(1)
+        response = yield self.fetch_alias('/test_signals', 'POST')
+        expect(response.code).to_equal(401)
+        expect(response.reason).to_equal('Unauthorized')
+        response = yield self.fetch_alias('/test_signals', 'POST', auth_cookie=True)
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('POST OK')
+
+    @testing.gen_test
+    def test_if_authenticate_update_option_is_autheticating_sended_handlers(self):
+        bzz.AuthHive.configure(
+            self.get_app(), 'SECRET',
+            authenticated_create=False,
+            authenticated_update=True,
+            authenticated_delete=False,
+            authenticated_get=False
+        )
+
+        expect(signals.pre_update_instance.receivers).to_length(1)
+        response = yield self.fetch_alias('/test_signals', 'PUT')
+        expect(response.code).to_equal(401)
+        expect(response.reason).to_equal('Unauthorized')
+        response = yield self.fetch_alias('/test_signals', 'PUT', auth_cookie=True)
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('UPDATE OK')
+
+    @testing.gen_test
+    def test_if_authenticate_delete_option_is_autheticating_sended_handlers(self):
+        bzz.AuthHive.configure(
+            self.get_app(), 'SECRET',
+            authenticated_create=False,
+            authenticated_update=False,
+            authenticated_delete=True,
+            authenticated_get=False
+        )
+
+        expect(signals.pre_delete_instance.receivers).to_length(1)
+        response = yield self.fetch_alias('/test_signals', 'DELETE')
+        expect(response.code).to_equal(401)
+        expect(response.reason).to_equal('Unauthorized')
+        response = yield self.fetch_alias('/test_signals', 'DELETE', auth_cookie=True)
+        expect(response.code).to_equal(200)
+        expect(response.body).to_equal('DELETE OK')
