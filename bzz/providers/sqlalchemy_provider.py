@@ -8,78 +8,104 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2014 Bernardo Heynemann heynemann@gmail.com
 
-import sys
 import math
 
 import tornado.gen as gen
-import mongoengine
+from sqlalchemy.orm.relationships import RelationshipProperty
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.inspection import inspect
+from sqlalchemy.ext.declarative import declarative_base
 
 import bzz.model as bzz
-import bzz.utils as utils
 
 
-class MongoEngineProvider(bzz.ModelProvider):
+Base = declarative_base()
+
+
+class MaxDepthError(RuntimeError):
+    pass
+
+
+class SQLAlchemyProvider(bzz.ModelProvider):
+    @property
+    def db(self):
+        return self.application.db
+
     @classmethod
     def get_model_name(cls, model):
         return model.__name__
 
     @classmethod
     def get_model_collection(cls, model):
-        return model._meta.get('collection', None)
+        return model.__table__
 
     @classmethod
     def get_model_fields(cls, model):
-        return model._fields
+        mapper = inspect(model)
+        columns = mapper.columns
+        relations = mapper.relationships
+        columns.update(relations)
+        return columns
 
     @classmethod
     def get_model(cls, field):
-        return cls.get_document_type(field)
+        if not isinstance(field, RelationshipProperty):
+            return None
+
+        for c in Base._decl_class_registry.values():
+            if hasattr(c, '__tablename__') and c.__tablename__ == field.table.fullname:
+                return c
+
+        return None
 
     @classmethod
     def get_field_target_name(cls, field):
-        return field.db_field
+        if isinstance(field, RelationshipProperty):
+            return field.key
+        return field.name
 
     @classmethod
     def get_document_type(cls, field):
         if cls.is_list_field(field):
-            field = field.field
-        return getattr(field, 'document_type', None)
+            return field.argument
+        return field.__class__
 
     @classmethod
     def allows_create_on_associate(cls, field):
-        if cls.is_list_field(field):
-            field = field.field
-
-        return cls.is_embedded_field(field)
+        return False
 
     @classmethod
     def is_lazy_loaded(cls, field):
-        if cls.is_list_field(field):
-            field = field.field
+        if not isinstance(field, RelationshipProperty):
+            return False
 
-        return cls.is_reference_field(field)
+        return field.lazy
 
     @classmethod
     def is_list_field(cls, field):
-        return isinstance(field, mongoengine.ListField)
+        if isinstance(field, InstrumentedAttribute):
+            field = field.parent.relationships[field.key]
+
+        return isinstance(field, RelationshipProperty) and field.uselist
 
     @classmethod
     def is_reference_field(cls, field):
-        return isinstance(field, mongoengine.ReferenceField)
+        return isinstance(field, RelationshipProperty)
 
     @classmethod
     def is_embedded_field(cls, field):
-        return isinstance(field, mongoengine.EmbeddedDocumentField)
+        return False
 
     @gen.coroutine
     def save_new_instance(self, model, data):
         instance = model()
+        fields = self.get_model_fields(model)
 
         for key, value in data.items():
             if '.' in key or '[]' in key:
                 yield self.fill_property(model, instance, key, value)
             else:
-                field = instance._fields.get(key)
+                field = fields.get(key)
                 if self.is_reference_field(field):
                     value = yield self.get_instance(
                         value,
@@ -87,15 +113,9 @@ class MongoEngineProvider(bzz.ModelProvider):
                     )
                 setattr(instance, key, value)
 
-        if isinstance(instance, mongoengine.Document):
-            try:
-                instance.save()
-            except mongoengine.NotUniqueError:
-                err = sys.exc_info()[1]
-                raise gen.Return((None, (409, err)))
-            except mongoengine.ValidationError:
-                err = sys.exc_info()[1]
-                raise gen.Return((None, (400, err)))
+        self.db.add(instance)
+        self.db.flush()
+        self.db.commit()
 
         raise gen.Return((instance, None))
 
@@ -110,18 +130,6 @@ class MongoEngineProvider(bzz.ModelProvider):
 
         property_name = '.'.join(parts[1:])
 
-        if getattr(instance, field_name, None) is None:
-            field = model._fields[field_name]
-            embedded_document = field.document_type()
-
-            if updated_fields is not None:
-                updated_fields[field_name] = {
-                    'from': getattr(instance, field_name),
-                    'to': value
-                }
-
-            setattr(instance, field_name, embedded_document)
-
         if '.' not in property_name:
             if updated_fields is not None:
                 updated_fields[field_name] = {
@@ -130,6 +138,9 @@ class MongoEngineProvider(bzz.ModelProvider):
                 }
 
             field = getattr(model, field_name, None)
+            if isinstance(field, InstrumentedAttribute):
+                field = field.parent.relationships[field.key]
+
             child_model = self.get_model(field)
             if multiple and self.is_list_field(field):
                 if not isinstance(value, (tuple, list)):
@@ -140,6 +151,7 @@ class MongoEngineProvider(bzz.ModelProvider):
                     child_instance = yield self.get_instance(
                         item, model=child_model
                     )
+
                     list_property.append(child_instance)
             else:
                 setattr(getattr(instance, field_name), property_name, value)
@@ -156,6 +168,8 @@ class MongoEngineProvider(bzz.ModelProvider):
         if model is None:
             model = self.model
 
+        fields = self.get_model_fields(model)
+
         if instance is None:
             instance = yield self.get_instance(pk, model)
 
@@ -166,7 +180,7 @@ class MongoEngineProvider(bzz.ModelProvider):
                     model, instance, field_name, value, updated_fields
                 )
             else:
-                field = instance._fields.get(field_name)
+                field = fields.get(field_name)
                 if self.is_reference_field(field):
                     value = yield self.get_instance(
                         value, self.get_model(field)
@@ -177,32 +191,23 @@ class MongoEngineProvider(bzz.ModelProvider):
                 }
                 setattr(instance, field_name, value)
 
-        if parent and isinstance(instance, mongoengine.EmbeddedDocument):
-            _, error = yield self.save_instance(parent)
-        else:
-            _, error = yield self.save_instance(instance)
+        yield self.save_instance(instance)
 
-        raise gen.Return((error, instance, updated_fields))
+        raise gen.Return((None, instance, updated_fields))
 
     @gen.coroutine
     def save_instance(self, instance):
-        error = None
-        try:
-            instance.save()
-        except mongoengine.NotUniqueError:
-            err = sys.exc_info()[1]
-            raise gen.Return((None, (409, err)))
-        except mongoengine.ValidationError:
-            err = sys.exc_info()[1]
-            raise gen.Return((None, (400, err)))
+        self.db.flush()
+        self.db.commit()
 
-        raise gen.Return((instance, error))
+        raise gen.Return((instance, None))
 
     @gen.coroutine
     def delete_instance(self, pk):
         instance = yield self.get_instance(pk)
         if instance is not None:
-            instance.delete()
+            self.db.delete(instance)
+            yield self.save_instance(instance)
         raise gen.Return(instance)
 
     @gen.coroutine
@@ -210,18 +215,14 @@ class MongoEngineProvider(bzz.ModelProvider):
         if model is None:
             model = self.model
 
-        queryset = model.objects
+        queryset = self.db.query(model)
         if hasattr(model, 'get_instance_queryset'):
             queryset = model.get_instance_queryset(model, queryset, instance_id, self)
 
         instance = None
         field = self.get_id_field_name(model)
 
-        if instance_id:
-            query = {field: instance_id}
-            if isinstance(instance_id, list):
-                query = {field + "__in": instance_id}
-            instance = queryset.filter(**query).first()
+        instance = queryset.filter(field == instance_id).first()
 
         raise gen.Return(instance)
 
@@ -230,17 +231,19 @@ class MongoEngineProvider(bzz.ModelProvider):
         if filters is None:
             filters = {}
 
-        queryset = self.model.objects
+        queryset = self.db.query(self.model)
         if hasattr(self.model, 'get_list_queryset'):
             queryset = self.model.get_list_queryset(queryset, self)
 
         if filters:
-            queryset = queryset.filter(**dict([
-                (key.replace('.', '__'), value)
-                for key, value in filters.items()
-            ]))
+            for filter_, value in filters.items():
+                queryset = queryset.filter(
+                    self.get_field(self.model, filter_) == value
+                )
 
-        pages = int(math.ceil(queryset.count() / float(per_page)))
+        count = queryset.count()
+
+        pages = int(math.ceil(count / float(per_page)))
         if pages == 0:
             raise gen.Return([])
 
@@ -252,7 +255,7 @@ class MongoEngineProvider(bzz.ModelProvider):
         start = per_page * page
         stop = start + per_page
 
-        items = queryset.all()[start:stop]
+        items = queryset[start:stop]
         raise gen.Return(items)
 
     def dump_list(self, items):
@@ -263,7 +266,10 @@ class MongoEngineProvider(bzz.ModelProvider):
 
         return dumped
 
-    def dump_instance(self, instance):
+    def dump_instance(self, instance, depth=0):
+        if depth > 1:
+            raise MaxDepthError()
+
         if instance is None:
             return {}
 
@@ -272,7 +278,18 @@ class MongoEngineProvider(bzz.ModelProvider):
         if method:
             return method()
 
-        return utils.loads(instance.to_json())
+        result = dict()
+        for node_name, node in self.tree.find_by_class(instance.__class__).children.items():
+            if node.model_type is not None:
+                if not node.is_multiple:
+                    try:
+                        result[node_name] = self.dump_instance(getattr(instance, node_name), depth=depth + 1)
+                    except MaxDepthError:
+                        pass
+            else:
+                result[node_name] = getattr(instance, node_name)
+
+        return result
 
     @gen.coroutine
     def get_instance_id(self, instance):
@@ -285,31 +302,36 @@ class MongoEngineProvider(bzz.ModelProvider):
     def get_id_field_name(self, model=None):
         if model is None:
             model = self.model
+
+        fields = self.get_model_fields(model)
         field = getattr(model, 'get_id_field_name', None)
         if field:
-            return field().name
+            name = field().name
+        else:
+            name = 'id'
 
-        return 'id'
+        id_field = fields.get(name, None)
+
+        if id_field is None:
+            raise ValueError("Could not find a 'get_id_field_name' method on '%s', neither an 'id' field could be found in same model." % model.__name__)
+
+        return id_field
 
     @gen.coroutine
     def associate_instance(self, obj, field_name, instance):
         if obj is None:
             return
 
-        field = obj._fields.get(field_name)
+        field = getattr(obj.__class__, field_name)
+        if isinstance(field, InstrumentedAttribute):
+            field = field.parent.relationships[field.key]
+
         if self.is_list_field(field):
             getattr(obj, field_name).append(instance)
         else:
             setattr(obj, field_name, instance)
 
-        try:
-            obj.save()
-        except mongoengine.NotUniqueError:
-            err = sys.exc_info()[1]
-            raise gen.Return((None, (409, err)))
-        except mongoengine.ValidationError:
-            err = sys.exc_info()[1]
-            raise gen.Return((None, (400, err)))
+        yield self.save_instance(obj)
 
         raise gen.Return((obj, None))
 
@@ -320,7 +342,8 @@ class MongoEngineProvider(bzz.ModelProvider):
         if '/' in field_name:
             property_name, pk = field_name.split('/')
 
-        field = obj._fields[property_name]
+        fields = self.get_model_fields(obj.__class__)
+        field = fields[property_name]
         return self.get_document_type(field)
 
     @gen.coroutine
@@ -352,8 +375,8 @@ class MongoEngineProvider(bzz.ModelProvider):
             model_path = part[0]
             field = getattr(model, model_path)
 
-            if self.is_list_field(field):
-                field = field.field
+            if isinstance(field, InstrumentedAttribute):
+                field = field.parent.relationships[field.key]
 
             to_return = self.is_reference_field(field)
             model = self.get_model(field)

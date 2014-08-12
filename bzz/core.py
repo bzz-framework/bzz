@@ -21,6 +21,9 @@ class Node(object):
             raise ValueError("Can't create unnamed node.")
 
         self.is_root = is_root
+        self.cache = None
+        if self.is_root:
+            self.cache = {}
         self.name = name
         self.slug = slugify.slugify(self.name.lower())
         self.target_name = name
@@ -45,3 +48,18 @@ class Node(object):
                 break
 
         return obj
+
+    def get_cache_name(self, model):
+        return model.__name__
+
+    def add_to_cache(self, model, node):
+        if self.cache is None:
+            return
+
+        self.cache[self.get_cache_name(model)] = node
+
+    def find_by_class(self, cls):
+        if self.cache is None:
+            return None
+
+        return self.cache.get(cls.__name__)

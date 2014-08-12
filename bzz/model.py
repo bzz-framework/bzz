@@ -18,7 +18,8 @@ import bzz.utils as utils
 
 
 AVAILABLE_PROVIDERS = {
-    'mongoengine': 'bzz.providers.mongoengine_provider.MongoEngineProvider'
+    'mongoengine': 'bzz.providers.mongoengine_provider.MongoEngineProvider',
+    'sqlalchemy': 'bzz.providers.sqlalchemy_provider.SQLAlchemyProvider',
 }
 
 
@@ -118,6 +119,8 @@ class ModelProvider(tornado.web.RequestHandler):
         if node is None:
             node = core.Node(cls.get_model_name(model), is_root=True)
 
+        node.add_to_cache(model, node)
+
         node.target_name = cls.get_model_collection(model)
         node.is_multiple = False
 
@@ -126,13 +129,15 @@ class ModelProvider(tornado.web.RequestHandler):
 
         node.model_type = model
 
-        cls.parse_children(model, node.children)
+        cls.parse_children(model, node.children, node)
 
         return node
 
     @classmethod
-    def parse_children(cls, model, collection):
+    def parse_children(cls, model, collection, root_node):
         for field_name, field in cls.get_model_fields(model).items():
+            model = cls.get_model(field)
+
             child_node = core.Node(field_name)
             collection[field_name] = child_node
 
@@ -143,10 +148,15 @@ class ModelProvider(tornado.web.RequestHandler):
             child_node.is_lazy_loaded = \
                 cls.is_lazy_loaded(field)
 
-            child_node.model_type = cls.get_model(field)
+            child_node.model_type = model
 
             if child_node.model_type is not None:
-                cls.parse_children(child_node.model_type, child_node.children)
+                cached_node = root_node.find_by_class(model)
+                if cached_node is None:
+                    root_node.add_to_cache(model, child_node)
+                    cls.parse_children(child_node.model_type, child_node.children, root_node)
+                else:
+                    child_node.children = cached_node.children
 
     def get_node(self, path):
         if '.' not in path:
@@ -492,7 +502,8 @@ class ModelProvider(tornado.web.RequestHandler):
 
     @gen.coroutine
     def handle_delete_association(self, parent, instance, property_name):
-        field = parent._fields.get(property_name)
+        fields = self.get_model_fields(parent.__class__)
+        field = fields.get(property_name)
         if self.is_list_field(field):
             property_list = getattr(parent, property_name, [])
 
@@ -535,7 +546,10 @@ class ModelProvider(tornado.web.RequestHandler):
                         data[key].append(old)
                     data[key].append(unquote(value))
                 else:
-                    data[key] = unquote(value)
+                    if '[]' in key:
+                        data[key] = [unquote(value)]
+                    else:
+                        data[key] = unquote(value)
         else:
             for arg in list(self.request.arguments.keys()):
                 data[arg] = self.get_argument(arg)

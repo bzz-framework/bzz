@@ -25,6 +25,7 @@ tests_require = [
     'markupsafe',
     'sphinx',
     'mongoengine',
+    'sqlalchemy',
     'nose-focus',
     'sphinx_rtd_theme',
 ]

@@ -19,7 +19,9 @@ setup:
 	@pip install -U -e .\[tests\]
 
 # test your application (tests in the tests/ directory)
-test: mongo_test unit doctest
+test: unit doctest
+
+test_dependencies: mongo_test drop_test
 
 unit:
 	@coverage run --branch `which nosetests` -vv --with-yanc --logging-level=WARNING -s tests/
@@ -72,3 +74,7 @@ open-docs:
 
 publish:
 	@python setup.py sdist upload
+
+drop_test:
+	@mysql -u root -e "DROP DATABASE IF EXISTS test_bzz; CREATE DATABASE IF NOT EXISTS test_bzz"
+	@echo "DB RECREATED"

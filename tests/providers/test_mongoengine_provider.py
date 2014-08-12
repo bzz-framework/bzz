@@ -93,8 +93,6 @@ class MongoEngineProviderTestCase(base.ApiTestCase):
         self.server = TestServer(config=cfg)
         return self.server
 
-    from nose_focus import focus
-    @focus
     @testing.gen_test
     def test_can_create_user(self):
         response = yield self.http_client.fetch(
