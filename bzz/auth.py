@@ -206,7 +206,7 @@ class AuthSigninHandler(AuthHandler):
             AuthHandler._set_unauthorized(self)
 
         user_data = yield provider.authenticate(
-            access_token, self.application.authentication_options['proxy_info']
+            access_token, self.application.authentication_options['proxy_info'], post_data=post_data
         )
         if user_data:
             payload = dict(
@@ -250,5 +250,5 @@ class AuthProvider(object):
         return cls.__name__.split('Provider')[0].lower()
 
     @gen.coroutine
-    def authenticate(self, access_token, proxy_info=None):
+    def authenticate(self, access_token, proxy_info=None, post_data=None):
         raise NotImplementedError('Provider.authenticate method must be implemented')

@@ -24,7 +24,7 @@ class GoogleProvider(AuthProvider):
     API_URL = 'https://www.googleapis.com/oauth2/v1/userinfo?access_token={}'
 
     @gen.coroutine
-    def authenticate(self, access_token, proxy_info=None):
+    def authenticate(self, access_token, proxy_info=None, post_data=None):
         '''
         Try to get Google user info and returns it if
         the given access_token get`s a valid user info in a string

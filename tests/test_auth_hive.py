@@ -23,6 +23,7 @@ import bzz.signals as signals
 import bzz.utils as utils
 import tests.base as base
 from bzz.providers.google import GoogleProvider
+from bzz.providers.mock import MockProvider
 
 
 def load_json(json_string):
@@ -32,15 +33,9 @@ def load_json(json_string):
         return utils.loads(json_string.decode('utf-8'))
 
 
-class MockProvider(bzz.AuthProvider):
-    @gen.coroutine
-    def authenticate(self, access_token, proxy_info=None):
-        raise gen.Return({'id': "123"})
-
-
 class MockUnauthorizedProvider(bzz.AuthProvider):
     @gen.coroutine
-    def authenticate(self, access_token, proxy_info=None):
+    def authenticate(self, access_token, proxy_info=None, post_data=None):
         raise gen.Return(None)
 
 
@@ -63,6 +58,7 @@ class TestServer(server.Server):
             MockUnauthorizedProvider(self.io_loop),
             MockProvider(self.io_loop)
         ])
+
         handlers_list += [
             ('/test_authentication/', TestAuthHandler)
         ]
@@ -141,6 +137,24 @@ class AuthHiveTestCase(base.ApiTestCase):
 
         expect(response.code).to_equal(200)
         expect(load_json(response.body)).to_be_like(dict(authenticated=True, id="123"))
+        cookie_name = self.server.application.authentication_options['cookie_name']
+        expect(cookie_name in response.headers.get('Set-Cookie')).to_equal(True)
+
+    @testing.gen_test
+    def test_can_authenticate_with_custom_params(self):
+        response = yield self.http_client.fetch(
+            self.get_url('/auth/signin/'),
+            method='POST',
+            body=utils.dumps({
+                'access_token': '1234567890',
+                'provider': 'mock',
+                'name': 'Much Name',
+                'email': 'Such@email.doge'
+            })
+        )
+
+        expect(response.code).to_equal(200)
+        expect(load_json(response.body)).to_be_like(dict(authenticated=True, id="123", name='Much Name', email='Such@email.doge'))
         cookie_name = self.server.application.authentication_options['cookie_name']
         expect(cookie_name in response.headers.get('Set-Cookie')).to_equal(True)
 
