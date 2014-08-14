@@ -19,7 +19,7 @@ setup:
 	@pip install -U -e .\[tests\]
 
 # test your application (tests in the tests/ directory)
-test: unit doctest
+test: test_dependencies unit doctest
 
 test_dependencies: mongo_test drop_test
 
