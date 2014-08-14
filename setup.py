@@ -26,6 +26,7 @@ tests_require = [
     'sphinx',
     'mongoengine',
     'sqlalchemy',
+    'mysql-python',
     'nose-focus',
     'sphinx_rtd_theme',
 ]
