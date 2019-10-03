@@ -32,7 +32,7 @@ py==1.4.22
 pymongo==2.7.1
 pyzmq==14.3.1
 regex==2014.06.28
-requests==2.3.0
+requests==2.20.0
 six==1.7.3
 slugify==0.0.1
 tornado==4.0
